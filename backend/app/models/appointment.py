@@ -1,0 +1,73 @@
+import enum
+from datetime import datetime
+
+from sqlalchemy import (
+    CheckConstraint,
+    Date,
+    DateTime,
+    Enum,
+    Integer,
+    String,
+    Text,
+    Time,
+)
+from sqlalchemy.orm import Mapped, mapped_column
+
+from app.database.base import Base
+
+
+class AppointmentStatus(str, enum.Enum):
+    """Valid appointment status values.
+
+    Using str mixin so the enum serialises as its string value
+    rather than the enum member name, which keeps JSON responses clean.
+    """
+
+    SCHEDULED = "scheduled"
+    COMPLETED = "completed"
+    CANCELLED = "cancelled"
+
+
+class Appointment(Base):
+    __tablename__ = "appointments"
+
+    __table_args__ = (
+        # Database-level guard: end_time must be strictly after start_time.
+        CheckConstraint("end_time > start_time", name="ck_appointments_end_after_start"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    appointment_date: Mapped[datetime] = mapped_column(Date, nullable=False)
+    start_time: Mapped[datetime] = mapped_column(Time, nullable=False)
+    end_time: Mapped[datetime] = mapped_column(Time, nullable=False)
+
+    status: Mapped[AppointmentStatus] = mapped_column(
+        Enum(AppointmentStatus, name="appointmentstatus", native_enum=False),
+        nullable=False,
+        default=AppointmentStatus.SCHEDULED,
+        server_default=AppointmentStatus.SCHEDULED.value,
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        default=datetime.utcnow,
+        server_default="now()",
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+        server_default="now()",
+    )
+
+    def __repr__(self) -> str:
+        return (
+            f"<Appointment id={self.id!r} title={self.title!r} "
+            f"date={self.appointment_date!r} status={self.status!r}>"
+        )
