@@ -1,6 +1,8 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
+from app.core.exceptions import AppointmentConflictError, InvalidStatusTransitionError
 from app.routes.appointments import router as appointments_router
 
 app = FastAPI(
@@ -18,6 +20,37 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# ---------------------------------------------------------------------------
+# Business-rule exception handlers
+# Map application exceptions to appropriate HTTP status codes so that
+# expected failures never surface as 500 Internal Server Error.
+# ---------------------------------------------------------------------------
+
+@app.exception_handler(AppointmentConflictError)
+async def appointment_conflict_handler(
+    request: Request, exc: AppointmentConflictError
+) -> JSONResponse:
+    return JSONResponse(
+        status_code=409,
+        content={"detail": exc.message},
+    )
+
+
+@app.exception_handler(InvalidStatusTransitionError)
+async def invalid_status_transition_handler(
+    request: Request, exc: InvalidStatusTransitionError
+) -> JSONResponse:
+    return JSONResponse(
+        status_code=409,
+        content={"detail": exc.message},
+    )
+
+
+# ---------------------------------------------------------------------------
+# Routers
+# ---------------------------------------------------------------------------
 
 app.include_router(appointments_router)
 
