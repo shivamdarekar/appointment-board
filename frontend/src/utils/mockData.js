@@ -1,0 +1,98 @@
+/**
+ * Mock appointment data for UI development.
+ * Shape matches the backend AppointmentResponse exactly so replacing
+ * this with real API data requires no structural changes.
+ *
+ * Remove this file once API integration is complete.
+ */
+
+export const MOCK_APPOINTMENTS = [
+  {
+    id: '550e8400-e29b-41d4-a716-446655440001',
+    title: 'Product Strategy Review',
+    description: 'Q4 roadmap alignment with the product and engineering leads.',
+    appointment_date: '2026-10-01',
+    start_time: '09:00:00',
+    end_time: '10:00:00',
+    status: 'scheduled',
+    created_at: '2026-09-15T08:00:00',
+    updated_at: '2026-09-15T08:00:00',
+  },
+  {
+    id: '550e8400-e29b-41d4-a716-446655440002',
+    title: 'Design Sync',
+    description: 'Weekly design review with the UI team.',
+    appointment_date: '2026-10-01',
+    start_time: '11:00:00',
+    end_time: '11:30:00',
+    status: 'scheduled',
+    created_at: '2026-09-15T08:10:00',
+    updated_at: '2026-09-15T08:10:00',
+  },
+  {
+    id: '550e8400-e29b-41d4-a716-446655440003',
+    title: 'Onboarding — Sarah Chen',
+    description: 'New hire onboarding session. Cover tooling and process.',
+    appointment_date: '2026-10-02',
+    start_time: '10:00:00',
+    end_time: '11:30:00',
+    status: 'scheduled',
+    created_at: '2026-09-16T09:00:00',
+    updated_at: '2026-09-16T09:00:00',
+  },
+  {
+    id: '550e8400-e29b-41d4-a716-446655440004',
+    title: 'Sprint Retrospective',
+    description: null,
+    appointment_date: '2026-09-30',
+    start_time: '14:00:00',
+    end_time: '15:00:00',
+    status: 'completed',
+    created_at: '2026-09-10T14:00:00',
+    updated_at: '2026-09-30T15:05:00',
+  },
+  {
+    id: '550e8400-e29b-41d4-a716-446655440005',
+    title: 'Investor Call',
+    description: 'Series A follow-up with Sequoia partners.',
+    appointment_date: '2026-09-29',
+    start_time: '15:00:00',
+    end_time: '16:00:00',
+    status: 'completed',
+    created_at: '2026-09-08T10:00:00',
+    updated_at: '2026-09-29T16:10:00',
+  },
+  {
+    id: '550e8400-e29b-41d4-a716-446655440006',
+    title: 'Vendor Demo — CloudX',
+    description: 'Infrastructure vendor evaluation. Cancelled due to scheduling conflict.',
+    appointment_date: '2026-09-28',
+    start_time: '13:00:00',
+    end_time: '14:00:00',
+    status: 'cancelled',
+    created_at: '2026-09-07T11:00:00',
+    updated_at: '2026-09-25T09:30:00',
+  },
+  {
+    id: '550e8400-e29b-41d4-a716-446655440007',
+    title: 'Engineering All-Hands',
+    description: null,
+    appointment_date: '2026-10-05',
+    start_time: '10:00:00',
+    end_time: '11:00:00',
+    status: 'scheduled',
+    created_at: '2026-09-20T08:00:00',
+    updated_at: '2026-09-20T08:00:00',
+  },
+  {
+    id: '550e8400-e29b-41d4-a716-446655440008',
+    title: 'Budget Planning',
+    description: 'Annual budget review with finance team.',
+    appointment_date: '2026-10-06',
+    start_time: '09:00:00',
+    end_time: '10:30:00',
+    status: 'scheduled',
+    created_at: '2026-09-21T08:00:00',
+    updated_at: '2026-09-21T08:00:00',
+  },
+]
