@@ -20,24 +20,6 @@ def _check_conflict(
     exclude_id: uuid.UUID | None = None,
 ) -> None:
     """Check if the given time slot overlaps with any existing scheduled appointment."""
-    db: Session,
-    appt_date: date,
-    start: time,
-    end: time,
-    exclude_id: uuid.UUID | None = None,
-) -> None:
-    """Query the database for any active appointment that overlaps the given slot.
-
-    Uses the half-open interval overlap test:
-        existing_start < new_end  AND  existing_end > new_start
-
-    Adjacent appointments (one ends exactly when the next begins) are allowed.
-
-    Only appointments with a blocking status are considered.
-    Cancelled and completed appointments do not block a slot.
-
-    Raises AppointmentConflictError if a conflict is found.
-    """
     query = (
         db.query(Appointment)
         .filter(
