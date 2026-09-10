@@ -8,18 +8,18 @@ from app.core.exceptions import AppointmentConflictError, InvalidStatusTransitio
 from app.models.appointment import Appointment, AppointmentStatus
 from app.schemas.appointment import AppointmentCreate, AppointmentUpdate
 
-# Statuses that occupy a time slot and block new appointments.
-# - scheduled: actively holds the slot
-# - completed: already happened; does not block future scheduling
-# - cancelled: vacated; does not block future scheduling
+# Only scheduled appointments block time slots
 _BLOCKING_STATUSES = (AppointmentStatus.SCHEDULED,)
 
 
-# ---------------------------------------------------------------------------
-# Internal helpers
-# ---------------------------------------------------------------------------
-
 def _check_conflict(
+    db: Session,
+    appt_date: date,
+    start: time,
+    end: time,
+    exclude_id: uuid.UUID | None = None,
+) -> None:
+    """Check if the given time slot overlaps with any existing scheduled appointment."""
     db: Session,
     appt_date: date,
     start: time,
@@ -49,17 +49,12 @@ def _check_conflict(
     )
 
     if exclude_id is not None:
-        # When updating, exclude the appointment being edited from its own check.
         query = query.filter(Appointment.id != exclude_id)
 
     conflict = query.first()
     if conflict is not None:
         raise AppointmentConflictError()
 
-
-# ---------------------------------------------------------------------------
-# Public service functions
-# ---------------------------------------------------------------------------
 
 def get_appointments(
     db: Session,
@@ -68,18 +63,7 @@ def get_appointments(
     page: int = 1,
     page_size: int = 10,
 ) -> dict:
-    """Return a paginated, optionally filtered list of appointments.
-
-    Filtering is applied at the database level before COUNT and LIMIT/OFFSET,
-    so pagination is always consistent with the active filters.
-
-    Returns a dict matching PaginatedAppointmentResponse:
-        items       — appointments for the requested page
-        page        — the requested page number
-        page_size   — the requested page size
-        total       — total matching records (across all pages)
-        total_pages — total number of pages
-    """
+    """Return a paginated, optionally filtered list of appointments."""
     query = db.query(Appointment)
 
     if filter_date is not None:
@@ -88,12 +72,9 @@ def get_appointments(
     if filter_status is not None:
         query = query.filter(Appointment.status == filter_status)
 
-    # Count BEFORE applying LIMIT/OFFSET so the total reflects the full
-    # filtered set, not just the current page.
     total: int = query.count()
     total_pages = max(1, -(-total // page_size)) if total > 0 else 0
 
-    # Stable ordering: date → start_time → created_at (tie-break)
     items = (
         query
         .order_by(Appointment.appointment_date, Appointment.start_time, Appointment.created_at)
@@ -123,14 +104,7 @@ def get_appointment(db: Session, appointment_id: uuid.UUID) -> Appointment:
 
 
 def create_appointment(db: Session, data: AppointmentCreate) -> Appointment:
-    """Persist a new appointment after verifying the time slot is free.
-
-    Conflict rule:
-        Only 'scheduled' appointments block a slot.
-        Cancelled and completed appointments do not.
-
-    Raises AppointmentConflictError if the slot is taken.
-    """
+    """Create a new appointment after verifying the time slot is free."""
     _check_conflict(db, data.appointment_date, data.start_time, data.end_time)
 
     appointment = Appointment(
@@ -150,18 +124,7 @@ def create_appointment(db: Session, data: AppointmentCreate) -> Appointment:
 def update_appointment(
     db: Session, appointment_id: uuid.UUID, data: AppointmentUpdate
 ) -> Appointment:
-    """Apply a partial update to an existing appointment.
-
-    Only scheduled appointments may be edited.
-    Completed and cancelled appointments are read-only historical records.
-
-    Only fields explicitly provided (non-None) are applied.
-    The conflict check always excludes the appointment being updated so it
-    does not conflict with its own existing slot.
-
-    Raises InvalidStatusTransitionError if the appointment is not scheduled.
-    Raises AppointmentConflictError if the new slot is taken by another appointment.
-    """
+    """Update an existing appointment. Only scheduled appointments can be edited."""
     appointment = get_appointment(db, appointment_id)
 
     if appointment.status == AppointmentStatus.COMPLETED:
@@ -178,8 +141,6 @@ def update_appointment(
     effective_start: time = update_data.get("start_time", appointment.start_time)
     effective_end: time = update_data.get("end_time", appointment.end_time)
 
-    # Service-level time ordering guard (schema catches it when both times
-    # are provided together; this catches the mixed partial-update case).
     if effective_end <= effective_start:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -194,11 +155,7 @@ def update_appointment(
 
 
 def complete_appointment(db: Session, appointment_id: uuid.UUID) -> Appointment:
-    """Mark an appointment as completed.
-
-    Valid transition: scheduled → completed
-    Invalid: cancelled → completed, completed → completed
-    """
+    """Mark an appointment as completed."""
     appointment = get_appointment(db, appointment_id)
 
     if appointment.status == AppointmentStatus.COMPLETED:
@@ -213,13 +170,7 @@ def complete_appointment(db: Session, appointment_id: uuid.UUID) -> Appointment:
 
 
 def cancel_appointment(db: Session, appointment_id: uuid.UUID) -> Appointment:
-    """Mark an appointment as cancelled.
-
-    Valid transition: scheduled → cancelled
-    Invalid: cancelled → cancelled, completed → cancelled
-
-    The record is never deleted — cancelled appointments remain visible.
-    """
+    """Cancel an appointment. The record is kept for history."""
     appointment = get_appointment(db, appointment_id)
 
     if appointment.status == AppointmentStatus.CANCELLED:

@@ -19,13 +19,13 @@ router = APIRouter(prefix="/api/appointments", tags=["appointments"])
 
 @router.get("", response_model=PaginatedAppointmentResponse, summary="List appointments")
 def list_appointments(
-    date: date | None = Query(default=None, description="Filter by appointment date (YYYY-MM-DD)"),
-    status: AppointmentStatus | None = Query(default=None, description="Filter by status"),
-    page: int = Query(default=1, ge=1, description="Page number (1-based)"),
-    page_size: int = Query(default=10, ge=1, le=100, description="Results per page (max 100)"),
+    date: date | None = Query(default=None),
+    status: AppointmentStatus | None = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=10, ge=1, le=100),
     db: Session = Depends(get_db),
 ):
-    """Return a paginated list of appointments, optionally filtered by date and/or status."""
+    """Return paginated appointments with optional date/status filters."""
     return appointment_service.get_appointments(
         db,
         filter_date=date,
@@ -37,7 +37,7 @@ def list_appointments(
 
 @router.get("/{appointment_id}", response_model=AppointmentResponse, summary="Get appointment")
 def get_appointment(appointment_id: uuid.UUID, db: Session = Depends(get_db)):
-    """Return a single appointment by UUID."""
+    """Get a single appointment by ID."""
     return appointment_service.get_appointment(db, appointment_id)
 
 
@@ -76,5 +76,5 @@ def complete_appointment(appointment_id: uuid.UUID, db: Session = Depends(get_db
     summary="Cancel appointment",
 )
 def cancel_appointment(appointment_id: uuid.UUID, db: Session = Depends(get_db)):
-    """Cancel an appointment. The record is kept — it is never deleted."""
+    """Cancel an appointment."""
     return appointment_service.cancel_appointment(db, appointment_id)

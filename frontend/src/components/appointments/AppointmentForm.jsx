@@ -3,22 +3,23 @@ import DatePicker from 'react-datepicker'
 import { format, parse, isValid } from 'date-fns'
 import 'react-datepicker/dist/react-datepicker.css'
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
 
-/** YYYY-MM-DD string → Date object (local, no timezone shift) */
+// Convert YYYY-MM-DD string to Date object
 function dateStrToDate(str) {
   if (!str) return null
   const d = parse(str, 'yyyy-MM-dd', new Date())
   return isValid(d) ? d : null
 }
 
-/** Date object → YYYY-MM-DD string */
+
+// Convert Date object to YYYY-MM-DD string
 function dateToStr(d) {
   if (!d || !isValid(d)) return ''
   return format(d, 'yyyy-MM-dd')
 }
 
-/** "HH:MM" or "HH:MM:SS" → Date object with today's date + that time */
+
+// Convert HH:MM string to Date object
 function timeStrToDate(str) {
   if (!str) return null
   const hhmm = str.slice(0, 5)
@@ -26,20 +27,22 @@ function timeStrToDate(str) {
   return isValid(d) ? d : null
 }
 
-/** Date object → "HH:MM:SS" for backend storage */
+
+// Convert Date object to HH:MM:SS for backend
 function dateToTimeStorage(d) {
   if (!d || !isValid(d)) return ''
   return format(d, 'HH:mm:ss')
 }
 
-/** Date object → "HH:MM" for comparison */
+
+// Convert Date object to HH:MM for comparison
 function dateToHHMM(d) {
   if (!d || !isValid(d)) return ''
   return format(d, 'HH:mm')
 }
 
-// ─── Validation ───────────────────────────────────────────────────────────────
 
+// Validate appointment form fields
 function validate(fields) {
   const errors = {}
   if (!fields.title.trim())          errors.title            = 'Title is required.'
@@ -53,7 +56,6 @@ function validate(fields) {
   return errors
 }
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
 
 function FieldError({ message }) {
   if (!message) return null
@@ -89,7 +91,6 @@ function inputClass(hasError) {
   return hasError ? INPUT_ERROR : INPUT_NORMAL
 }
 
-// ─── Custom input wrappers for DatePicker ────────────────────────────────────
 
 const DateInput = forwardRef(function DateInput({ value, onClick, placeholder, disabled, hasError, id }, ref) {
   return (

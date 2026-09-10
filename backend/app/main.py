@@ -22,12 +22,7 @@ app.add_middleware(
 )
 
 
-# ---------------------------------------------------------------------------
-# Business-rule exception handlers
-# Map application exceptions to appropriate HTTP status codes so that
-# expected failures never surface as 500 Internal Server Error.
-# ---------------------------------------------------------------------------
-
+# Map application exceptions to HTTP status codes
 @app.exception_handler(AppointmentConflictError)
 async def appointment_conflict_handler(
     request: Request, exc: AppointmentConflictError
@@ -48,14 +43,10 @@ async def invalid_status_transition_handler(
     )
 
 
-# ---------------------------------------------------------------------------
-# Routers
-# ---------------------------------------------------------------------------
-
 app.include_router(appointments_router)
 
 
 @app.get("/health", tags=["health"], summary="Health check")
 def health_check():
-    """Quick liveness check — confirms the server is running."""
+    """Health check endpoint."""
     return {"status": "ok"}

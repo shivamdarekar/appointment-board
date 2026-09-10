@@ -4,15 +4,8 @@ import AppHeader from './components/layout/AppHeader'
 import useTheme from './hooks/useTheme'
 import AppointmentBoardPage from './pages/AppointmentBoardPage'
 
-/**
- * Root application shell.
- *
- * <Toaster> is mounted once here at the root so toasts are always
- * rendered outside any scrollable/modal content.
- *
- * openFormSignal: counter AppointmentBoardPage watches to open the
- * "Add Appointment" modal from the header button.
- */
+
+// Root application component with toast notifications
 export default function App() {
   const [openFormSignal, setOpenFormSignal] = useState(0)
   const { theme, toggleTheme } = useTheme()

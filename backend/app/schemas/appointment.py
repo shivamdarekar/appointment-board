@@ -32,11 +32,7 @@ class AppointmentCreate(BaseModel):
 
 
 class AppointmentUpdate(BaseModel):
-    """Schema for updating an existing appointment.
-
-    All fields are optional so the client can send only what changed.
-    end_time validation runs only when both times are present.
-    """
+    """Schema for updating an existing appointment. All fields are optional."""
 
     title: str | None = Field(default=None, min_length=1, max_length=255)
     description: str | None = Field(default=None)
@@ -75,12 +71,11 @@ class AppointmentResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
 
-    # Allow Pydantic to read attributes from SQLAlchemy ORM objects directly.
     model_config = ConfigDict(from_attributes=True)
 
 
 class PaginatedAppointmentResponse(BaseModel):
-    """Paginated wrapper for the appointment list endpoint."""
+    """Paginated wrapper for appointment list endpoint."""
 
     items: list[AppointmentResponse]
     page: int

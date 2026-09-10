@@ -10,7 +10,7 @@ import useAppointments from '../hooks/useAppointments'
 import { STATUS } from '../constants/appointments'
 import { formatDate, formatTimeRange } from '../utils/formatters'
 
-// ─── Modal modes ──────────────────────────────────────────────────────────────
+// Modal modes
 const MODAL_CLOSED = null
 const MODAL_CREATE = 'create'
 const MODAL_EDIT   = 'edit'
@@ -40,24 +40,21 @@ export default function AppointmentBoardPage({ openCreateSignal = 0 }) {
     handleCancel,
   } = useAppointments()
 
-  // ── Form modal state ──────────────────────────────────────────────────────
-  const [modalMode, setModalMode]               = useState(MODAL_CLOSED)
+  const [modalMode, setModalMode] = useState(MODAL_CLOSED)
   const [editingAppointment, setEditingAppointment] = useState(null)
 
-  // ── Complete confirmation state ───────────────────────────────────────────
   const [completeTarget, setCompleteTarget] = useState(null)
-  const [completing, setCompleting]         = useState(false)
+  const [completing, setCompleting] = useState(false)
 
-  // ── Cancel confirmation state ─────────────────────────────────────────────
   const [cancelTarget, setCancelTarget] = useState(null)
-  const [cancelling, setCancelling]     = useState(false)
+  const [cancelling, setCancelling] = useState(false)
 
-  // ── Open create when header button fires ─────────────────────────────────
+  // Open create modal when header button is clicked
   useEffect(() => {
     if (openCreateSignal > 0) openCreate()
   }, [openCreateSignal]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Stats (current page only) ─────────────────────────────────────────────
+  // Calculate stats for current page appointments
   const stats = useMemo(() => ({
     scheduled: appointments.filter(a => a.status === STATUS.SCHEDULED).length,
     completed: appointments.filter(a => a.status === STATUS.COMPLETED).length,
@@ -65,8 +62,6 @@ export default function AppointmentBoardPage({ openCreateSignal = 0 }) {
   }), [appointments])
 
   const isFiltered = !!(dateFilter || statusFilter)
-
-  // ─── Form modal ───────────────────────────────────────────────────────────
 
   function openCreate() {
     setEditingAppointment(null)
@@ -103,8 +98,7 @@ export default function AppointmentBoardPage({ openCreateSignal = 0 }) {
     }
   }
 
-  // ─── Complete confirmation flow ───────────────────────────────────────────
-
+  // Complete appointment confirmation handlers
   function requestComplete(appointment) {
     setCompleteTarget(appointment)
   }
@@ -132,8 +126,7 @@ export default function AppointmentBoardPage({ openCreateSignal = 0 }) {
     }
   }
 
-  // ─── Cancel confirmation flow ─────────────────────────────────────────────
-
+  // Cancel appointment confirmation handlers
   function requestCancel(appointment) {
     setCancelTarget(appointment)
   }
@@ -161,14 +154,11 @@ export default function AppointmentBoardPage({ openCreateSignal = 0 }) {
     }
   }
 
-  // ─── Render ───────────────────────────────────────────────────────────────
-
   const isModalOpen = modalMode !== MODAL_CLOSED
 
   return (
     <main className="flex-1 bg-[#f7f8fa] transition-colors dark:bg-slate-950">
 
-      {/* ── Page header with summary stats ── */}
       <div className="border-b border-slate-200 bg-[#f7f8fa] dark:border-slate-800 dark:bg-slate-950">
         <div className="mx-auto max-w-7xl px-4 py-7 sm:px-6 lg:px-8">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -205,7 +195,6 @@ export default function AppointmentBoardPage({ openCreateSignal = 0 }) {
         </div>
       </div>
 
-      {/* ── Filters ── */}
       <AppointmentFilters
         dateFilter={dateFilter}
         statusFilter={statusFilter}
@@ -216,7 +205,6 @@ export default function AppointmentBoardPage({ openCreateSignal = 0 }) {
         loading={loading}
       />
 
-      {/* ── Board: loading / error / list ── */}
       {loading ? (
         <LoadingSkeleton />
       ) : loadError ? (
@@ -245,7 +233,6 @@ export default function AppointmentBoardPage({ openCreateSignal = 0 }) {
         </>
       )}
 
-      {/* ── Add / Edit modal ── */}
       <Modal
         isOpen={isModalOpen}
         onClose={closeModal}
@@ -259,7 +246,6 @@ export default function AppointmentBoardPage({ openCreateSignal = 0 }) {
         />
       </Modal>
 
-      {/* ── Complete confirmation ── */}
       <ConfirmDialog
         isOpen={!!completeTarget}
         title="Mark appointment as completed?"
@@ -284,7 +270,6 @@ export default function AppointmentBoardPage({ openCreateSignal = 0 }) {
         onCancel={dismissCompleteConfirm}
       />
 
-      {/* ── Cancel confirmation ── */}
       <ConfirmDialog
         isOpen={!!cancelTarget}
         title="Cancel this appointment?"
@@ -313,8 +298,8 @@ export default function AppointmentBoardPage({ openCreateSignal = 0 }) {
   )
 }
 
-// ─── Load error state ─────────────────────────────────────────────────────────
 
+// Loading error state component
 function LoadError({ message, onRetry }) {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 flex flex-col items-center gap-4">
@@ -341,8 +326,8 @@ function LoadError({ message, onRetry }) {
   )
 }
 
-// ─── Loading skeleton ─────────────────────────────────────────────────────────
 
+// Loading skeleton component
 function LoadingSkeleton() {
   return (
     <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8" aria-busy="true" aria-label="Loading appointments">
@@ -364,8 +349,8 @@ function LoadingSkeleton() {
   )
 }
 
-// ─── Stat pill ───────────────────────────────────────────────────────────────
 
+// Stat pill component for displaying appointment counts
 function StatPill({ label, count, color }) {
   return (
     <div className={`min-w-[5.5rem] rounded-xl border px-3 py-2 ${color}`}>

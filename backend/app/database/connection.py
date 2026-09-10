@@ -5,10 +5,10 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from app.core.config import settings
 
+# Database engine with connection pooling
 engine = create_engine(
     settings.database_url,
-    # Keep a small pool suitable for a FastAPI app.
-    pool_pre_ping=True,  # discard stale connections (important for Neon)
+    pool_pre_ping=True,
 )
 
 SessionLocal = sessionmaker(
@@ -18,12 +18,8 @@ SessionLocal = sessionmaker(
 )
 
 
+# FastAPI dependency to provide database session per request
 def get_db() -> Generator[Session, None, None]:
-    """FastAPI dependency that provides a database session per request.
-
-    Usage in a route:
-        def my_route(db: Session = Depends(get_db)): ...
-    """
     db = SessionLocal()
     try:
         yield db
