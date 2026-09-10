@@ -1,6 +1,6 @@
 import { FILTER_STATUS_OPTIONS } from '../../constants/appointments'
 
-export default function AppointmentFilters({ dateFilter, statusFilter, onDateChange, onStatusChange, onClear, totalCount, filteredCount }) {
+export default function AppointmentFilters({ dateFilter, statusFilter, onDateChange, onStatusChange, onClear, totalCount, filteredCount, loading = false }) {
   const isFiltered = dateFilter || statusFilter
 
   return (
@@ -58,11 +58,21 @@ export default function AppointmentFilters({ dateFilter, statusFilter, onDateCha
             )}
           </div>
 
-          {/* Count */}
-          <p className="text-sm text-slate-500 dark:text-slate-400 font-medium whitespace-nowrap" aria-live="polite">
-            {isFiltered
-              ? `${filteredCount} of ${totalCount} appointment${totalCount !== 1 ? 's' : ''}`
-              : `${totalCount} appointment${totalCount !== 1 ? 's' : ''}`}
+          {/* Count / loading indicator */}
+          <p className="text-sm text-slate-500 dark:text-slate-400 font-medium whitespace-nowrap flex items-center gap-2" aria-live="polite">
+            {loading ? (
+              <>
+                <svg className="w-3.5 h-3.5 animate-spin text-indigo-400" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                </svg>
+                Loading…
+              </>
+            ) : (
+              isFiltered
+                ? `${filteredCount} of ${totalCount} appointment${totalCount !== 1 ? 's' : ''}`
+                : `${totalCount} appointment${totalCount !== 1 ? 's' : ''}`
+            )}
           </p>
 
         </div>

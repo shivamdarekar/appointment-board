@@ -1,68 +1,59 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, forwardRef } from 'react'
+import DatePicker from 'react-datepicker'
+import { format, parse, isValid } from 'date-fns'
+import 'react-datepicker/dist/react-datepicker.css'
 
-// ─── Helpers ────────────────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const EMPTY_FIELDS = {
-  title: '',
-  description: '',
-  appointment_date: '',
-  start_time: '',
-  end_time: '',
+/** YYYY-MM-DD string → Date object (local, no timezone shift) */
+function dateStrToDate(str) {
+  if (!str) return null
+  const d = parse(str, 'yyyy-MM-dd', new Date())
+  return isValid(d) ? d : null
 }
 
-/**
- * Backend stores times as HH:MM:SS.
- * HTML <input type="time"> works with HH:MM.
- * Strip the seconds suffix when pre-filling.
- */
-function toTimeInput(timeStr) {
-  if (!timeStr) return ''
-  return timeStr.slice(0, 5) // "09:00:00" → "09:00"
+/** Date object → YYYY-MM-DD string */
+function dateToStr(d) {
+  if (!d || !isValid(d)) return ''
+  return format(d, 'yyyy-MM-dd')
 }
 
-/**
- * Produce HH:MM:SS from HH:MM for storage consistency with the backend shape.
- */
-function toTimeStorage(timeStr) {
-  if (!timeStr) return ''
-  return timeStr.length === 5 ? `${timeStr}:00` : timeStr
+/** "HH:MM" or "HH:MM:SS" → Date object with today's date + that time */
+function timeStrToDate(str) {
+  if (!str) return null
+  const hhmm = str.slice(0, 5)
+  const d = parse(hhmm, 'HH:mm', new Date())
+  return isValid(d) ? d : null
 }
 
-/**
- * Returns true when end is strictly after start (both HH:MM strings).
- */
-function isEndAfterStart(start, end) {
-  if (!start || !end) return true // skip — caught by required checks
-  return end > start
+/** Date object → "HH:MM:SS" for backend storage */
+function dateToTimeStorage(d) {
+  if (!d || !isValid(d)) return ''
+  return format(d, 'HH:mm:ss')
 }
 
-// ─── Validation ─────────────────────────────────────────────────────────────
+/** Date object → "HH:MM" for comparison */
+function dateToHHMM(d) {
+  if (!d || !isValid(d)) return ''
+  return format(d, 'HH:mm')
+}
+
+// ─── Validation ───────────────────────────────────────────────────────────────
 
 function validate(fields) {
   const errors = {}
-
-  if (!fields.title.trim()) {
-    errors.title = 'Title is required.'
-  }
-
-  if (!fields.appointment_date) {
-    errors.appointment_date = 'Please select a date.'
-  }
-
-  if (!fields.start_time) {
-    errors.start_time = 'Start time is required.'
-  }
-
+  if (!fields.title.trim())          errors.title            = 'Title is required.'
+  if (!fields.appointment_date)      errors.appointment_date = 'Please select a date.'
+  if (!fields.start_time)            errors.start_time       = 'Start time is required.'
   if (!fields.end_time) {
     errors.end_time = 'End time is required.'
-  } else if (fields.start_time && !isEndAfterStart(fields.start_time, fields.end_time)) {
+  } else if (fields.start_time && fields.end_time <= fields.start_time) {
     errors.end_time = 'End time must be later than start time.'
   }
-
   return errors
 }
 
-// ─── Sub-components ──────────────────────────────────────────────────────────
+// ─── Sub-components ───────────────────────────────────────────────────────────
 
 function FieldError({ message }) {
   if (!message) return null
@@ -78,10 +69,7 @@ function FieldError({ message }) {
 
 function FieldLabel({ htmlFor, children, required }) {
   return (
-    <label
-      htmlFor={htmlFor}
-      className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5"
-    >
+    <label htmlFor={htmlFor} className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
       {children}
       {required && <span className="ml-0.5 text-rose-500" aria-hidden="true"> *</span>}
     </label>
@@ -101,138 +89,203 @@ function inputClass(hasError) {
   return hasError ? INPUT_ERROR : INPUT_NORMAL
 }
 
-// ─── Main Component ──────────────────────────────────────────────────────────
+// ─── Custom input wrappers for DatePicker ────────────────────────────────────
 
-/**
- * AppointmentForm
- *
- * Props:
- *   mode         — 'create' | 'edit'
- *   initialValues — appointment object (required when mode = 'edit')
- *   onSubmit(data) — called with the validated appointment data
- *   onCancel()    — called when the user cancels
- */
+const DateInput = forwardRef(function DateInput({ value, onClick, placeholder, disabled, hasError, id }, ref) {
+  return (
+    <div className="relative">
+      <input
+        id={id}
+        ref={ref}
+        readOnly
+        value={value}
+        onClick={onClick}
+        placeholder={placeholder ?? 'Select date'}
+        disabled={disabled}
+        className={`${inputClass(hasError)} cursor-pointer pr-10`}
+      />
+      <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-slate-400">
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+        </svg>
+      </span>
+    </div>
+  )
+})
+
+const TimeInput = forwardRef(function TimeInput({ value, onClick, placeholder, disabled, hasError, id }, ref) {
+  return (
+    <div className="relative">
+      <input
+        id={id}
+        ref={ref}
+        readOnly
+        value={value}
+        onClick={onClick}
+        placeholder={placeholder ?? 'Select time'}
+        disabled={disabled}
+        className={`${inputClass(hasError)} cursor-pointer pr-10`}
+      />
+      <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-slate-400">
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6l4 2m6-2a10 10 0 11-20 0 10 10 0 0120 0z" />
+        </svg>
+      </span>
+    </div>
+  )
+})
+
+// ─── Main component ───────────────────────────────────────────────────────────
+
 export default function AppointmentForm({ mode = 'create', initialValues = null, onSubmit, onCancel }) {
   const isEdit = mode === 'edit'
 
-  // ── Form state ─────────────────────────────────────────────────────────────
-  const [fields, setFields] = useState(() => {
-    if (isEdit && initialValues) {
-      return {
-        title: initialValues.title ?? '',
-        description: initialValues.description ?? '',
-        appointment_date: initialValues.appointment_date ?? '',
-        start_time: toTimeInput(initialValues.start_time),
-        end_time: toTimeInput(initialValues.end_time),
-      }
-    }
-    return EMPTY_FIELDS
-  })
+  // Store dates as Date objects for the pickers; strings for validation/submission
+  const [title, setTitle]             = useState('')
+  const [description, setDescription] = useState('')
+  const [dateValue, setDateValue]     = useState(null)   // Date | null
+  const [startValue, setStartValue]   = useState(null)   // Date | null
+  const [endValue, setEndValue]       = useState(null)   // Date | null
 
-  const [errors, setErrors] = useState({})
-  const [touched, setTouched] = useState({})
-  const [submitting, setSubmitting] = useState(false)
+  const [fieldErrors, setFieldErrors] = useState({})
+  const [apiError, setApiError]       = useState('')
+  const [touched, setTouched]         = useState({})
+  const [submitting, setSubmitting]   = useState(false)
 
-  // Re-populate when switching between different appointments to edit
-  useEffect(() => {
-    if (isEdit && initialValues) {
-      setFields({
-        title: initialValues.title ?? '',
-        description: initialValues.description ?? '',
-        appointment_date: initialValues.appointment_date ?? '',
-        start_time: toTimeInput(initialValues.start_time),
-        end_time: toTimeInput(initialValues.end_time),
-      })
-      setErrors({})
-      setTouched({})
-      setSubmitting(false)
-    }
-  }, [initialValues?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+  // ── Populate fields ────────────────────────────────────────────────────────
 
-  // ── Handlers ───────────────────────────────────────────────────────────────
-
-  function handleChange(e) {
-    const { name, value } = e.target
-    setFields((prev) => ({ ...prev, [name]: value }))
-
-    // Re-validate the changed field once it has been touched
-    if (touched[name]) {
-      const next = { ...fields, [name]: value }
-      const nextErrors = validate(next)
-      setErrors((prev) => ({
-        ...prev,
-        [name]: nextErrors[name] ?? undefined,
-        // Also re-evaluate end_time when start_time changes (and vice-versa)
-        ...(name === 'start_time' ? { end_time: nextErrors.end_time ?? undefined } : {}),
-      }))
-    }
-  }
-
-  function handleBlur(e) {
-    const { name } = e.target
-    setTouched((prev) => ({ ...prev, [name]: true }))
-    const nextErrors = validate(fields)
-    setErrors((prev) => ({ ...prev, [name]: nextErrors[name] ?? undefined }))
-  }
-
-  function handleSubmit(e) {
-    e.preventDefault()
-
-    // Mark all fields touched so errors show
-    setTouched({ title: true, appointment_date: true, start_time: true, end_time: true })
-
-    const validationErrors = validate(fields)
-    if (Object.keys(validationErrors).length > 0) {
-      setErrors(validationErrors)
-      return
-    }
-
-    if (submitting) return // prevent duplicate submission
-    setSubmitting(true)
-
-    const data = {
-      title: fields.title.trim(),
-      description: fields.description.trim() || null,
-      appointment_date: fields.appointment_date,
-      start_time: toTimeStorage(fields.start_time),
-      end_time: toTimeStorage(fields.end_time),
-    }
-
-    onSubmit(data)
-    // Parent is responsible for closing modal. Reset submitting if parent keeps
-    // modal open (e.g. on API error in a future phase).
+  function populateFromValues(values) {
+    setTitle(values?.title ?? '')
+    setDescription(values?.description ?? '')
+    setDateValue(dateStrToDate(values?.appointment_date))
+    setStartValue(timeStrToDate(values?.start_time))
+    setEndValue(timeStrToDate(values?.end_time))
+    setFieldErrors({})
+    setApiError('')
+    setTouched({})
     setSubmitting(false)
   }
 
-  // ── Derived ────────────────────────────────────────────────────────────────
-  const hasErrors = Object.values(errors).some(Boolean)
-  const submitLabel = isEdit ? 'Save Changes' : 'Create Appointment'
-  const submitDisabled = submitting
+  useEffect(() => {
+    populateFromValues(isEdit ? initialValues : null)
+  }, [initialValues?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Render ─────────────────────────────────────────────────────────────────
+  // ── Derived field strings (for validation) ────────────────────────────────
+
+  const appointment_date = dateToStr(dateValue)
+  const start_time       = dateToHHMM(startValue)
+  const end_time         = dateToHHMM(endValue)
+
+  // ── Field change handlers ─────────────────────────────────────────────────
+
+  function onDateChange(d) {
+    setDateValue(d)
+    setApiError('')
+    if (touched.appointment_date) {
+      const errs = validate({ title, appointment_date: dateToStr(d), start_time, end_time })
+      setFieldErrors(prev => ({ ...prev, appointment_date: errs.appointment_date ?? undefined }))
+    }
+  }
+
+  function onStartChange(d) {
+    setStartValue(d)
+    setApiError('')
+    if (touched.start_time || touched.end_time) {
+      const errs = validate({ title, appointment_date, start_time: dateToHHMM(d), end_time })
+      setFieldErrors(prev => ({ ...prev, start_time: errs.start_time ?? undefined, end_time: errs.end_time ?? undefined }))
+    }
+  }
+
+  function onEndChange(d) {
+    setEndValue(d)
+    setApiError('')
+    if (touched.end_time) {
+      const errs = validate({ title, appointment_date, start_time, end_time: dateToHHMM(d) })
+      setFieldErrors(prev => ({ ...prev, end_time: errs.end_time ?? undefined }))
+    }
+  }
+
+  function onTitleChange(e) {
+    setTitle(e.target.value)
+    setApiError('')
+    if (touched.title) {
+      const errs = validate({ title: e.target.value, appointment_date, start_time, end_time })
+      setFieldErrors(prev => ({ ...prev, title: errs.title ?? undefined }))
+    }
+  }
+
+  // ── Submit ────────────────────────────────────────────────────────────────
+
+  async function handleSubmit(e) {
+    e.preventDefault()
+
+    const allTouched = { title: true, appointment_date: true, start_time: true, end_time: true }
+    setTouched(allTouched)
+
+    const currentFields = { title, appointment_date, start_time, end_time }
+    const validationErrors = validate(currentFields)
+    if (Object.keys(validationErrors).length > 0) {
+      setFieldErrors(validationErrors)
+      return
+    }
+
+    if (submitting) return
+    setSubmitting(true)
+    setApiError('')
+
+    const data = {
+      title: title.trim(),
+      description: description.trim() || null,
+      appointment_date,
+      start_time: dateToTimeStorage(startValue),
+      end_time: dateToTimeStorage(endValue),
+    }
+
+    try {
+      const result = await onSubmit(data)
+      if (result && !result.ok) {
+        setApiError(result.error ?? 'Something went wrong. Please try again.')
+      }
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const hasFieldErrors = Object.values(fieldErrors).some(Boolean)
+  const submitLabel    = isEdit ? 'Save Changes' : 'Create Appointment'
+
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <form onSubmit={handleSubmit} noValidate aria-label={isEdit ? 'Edit appointment' : 'Add appointment'}>
       <div className="space-y-5">
+
+        {/* API error banner */}
+        {apiError && (
+          <div role="alert" className="flex items-start gap-2.5 p-3.5 rounded-lg bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-700/50 text-rose-700 dark:text-rose-300">
+            <svg className="w-4 h-4 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+            </svg>
+            <p className="text-sm leading-snug">{apiError}</p>
+          </div>
+        )}
 
         {/* Title */}
         <div>
           <FieldLabel htmlFor="appt-title" required>Title</FieldLabel>
           <input
             id="appt-title"
-            name="title"
             type="text"
-            value={fields.title}
-            onChange={handleChange}
-            onBlur={handleBlur}
+            value={title}
+            onChange={onTitleChange}
+            onBlur={() => setTouched(p => ({ ...p, title: true }))}
             placeholder="e.g. Product strategy review"
             maxLength={200}
             autoFocus
             disabled={submitting}
-            className={inputClass(!!errors.title)}
-            aria-describedby={errors.title ? 'appt-title-error' : undefined}
-            aria-invalid={!!errors.title}
+            className={inputClass(!!fieldErrors.title)}
+            aria-invalid={!!fieldErrors.title}
           />
-          <FieldError message={errors.title} />
+          <FieldError message={fieldErrors.title} />
         </div>
 
         {/* Description */}
@@ -240,10 +293,8 @@ export default function AppointmentForm({ mode = 'create', initialValues = null,
           <FieldLabel htmlFor="appt-description">Description</FieldLabel>
           <textarea
             id="appt-description"
-            name="description"
-            value={fields.description}
-            onChange={handleChange}
-            onBlur={handleBlur}
+            value={description}
+            onChange={e => setDescription(e.target.value)}
             placeholder="Optional — add any relevant details"
             rows={3}
             maxLength={1000}
@@ -252,67 +303,95 @@ export default function AppointmentForm({ mode = 'create', initialValues = null,
           />
         </div>
 
-        {/* Date */}
+        {/* Date picker */}
         <div>
           <FieldLabel htmlFor="appt-date" required>Date</FieldLabel>
-          <input
+          <DatePicker
             id="appt-date"
-            name="appointment_date"
-            type="date"
-            value={fields.appointment_date}
-            onChange={handleChange}
-            onBlur={handleBlur}
+            selected={dateValue}
+            onChange={onDateChange}
+            onBlur={() => setTouched(p => ({ ...p, appointment_date: true }))}
+            dateFormat="dd MMM yyyy"
+            placeholderText="Select appointment date"
             disabled={submitting}
-            className={inputClass(!!errors.appointment_date)}
-            aria-describedby={errors.appointment_date ? 'appt-date-error' : undefined}
-            aria-invalid={!!errors.appointment_date}
+            customInput={
+              <DateInput
+                id="appt-date"
+                hasError={!!fieldErrors.appointment_date}
+                disabled={submitting}
+              />
+            }
+            popperClassName="appt-datepicker-popper"
+            calendarClassName="appt-datepicker-calendar"
+            showPopperArrow={false}
+            todayButton="Today"
           />
-          <FieldError message={errors.appointment_date} />
+          <FieldError message={fieldErrors.appointment_date} />
         </div>
 
-        {/* Start / End time — side by side on sm+ */}
+        {/* Start / End time pickers */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
           {/* Start time */}
           <div>
             <FieldLabel htmlFor="appt-start" required>Start Time</FieldLabel>
-            <input
+            <DatePicker
               id="appt-start"
-              name="start_time"
-              type="time"
-              value={fields.start_time}
-              onChange={handleChange}
-              onBlur={handleBlur}
+              selected={startValue}
+              onChange={onStartChange}
+              onBlur={() => setTouched(p => ({ ...p, start_time: true }))}
+              showTimeSelect
+              showTimeSelectOnly
+              timeIntervals={15}
+              timeCaption="Start"
+              dateFormat="h:mm aa"
+              placeholderText="Select start time"
               disabled={submitting}
-              className={inputClass(!!errors.start_time)}
-              aria-describedby={errors.start_time ? 'appt-start-error' : undefined}
-              aria-invalid={!!errors.start_time}
+              customInput={
+                <TimeInput
+                  id="appt-start"
+                  hasError={!!fieldErrors.start_time}
+                  disabled={submitting}
+                />
+              }
+              popperClassName="appt-datepicker-popper"
+              showPopperArrow={false}
             />
-            <FieldError message={errors.start_time} />
+            <FieldError message={fieldErrors.start_time} />
           </div>
 
           {/* End time */}
           <div>
             <FieldLabel htmlFor="appt-end" required>End Time</FieldLabel>
-            <input
+            <DatePicker
               id="appt-end"
-              name="end_time"
-              type="time"
-              value={fields.end_time}
-              onChange={handleChange}
-              onBlur={handleBlur}
+              selected={endValue}
+              onChange={onEndChange}
+              onBlur={() => setTouched(p => ({ ...p, end_time: true }))}
+              showTimeSelect
+              showTimeSelectOnly
+              timeIntervals={15}
+              timeCaption="End"
+              dateFormat="h:mm aa"
+              placeholderText="Select end time"
               disabled={submitting}
-              className={inputClass(!!errors.end_time)}
-              aria-describedby={errors.end_time ? 'appt-end-error' : undefined}
-              aria-invalid={!!errors.end_time}
+              customInput={
+                <TimeInput
+                  id="appt-end"
+                  hasError={!!fieldErrors.end_time}
+                  disabled={submitting}
+                />
+              }
+              popperClassName="appt-datepicker-popper"
+              showPopperArrow={false}
             />
-            <FieldError message={errors.end_time} />
+            <FieldError message={fieldErrors.end_time} />
           </div>
 
         </div>
 
-        {/* Summary error hint (shown only if submit attempted + errors remain) */}
-        {hasErrors && Object.keys(touched).length > 0 && (
+        {/* Field summary hint */}
+        {hasFieldErrors && Object.keys(touched).length > 0 && (
           <p className="text-xs text-rose-600 dark:text-rose-400 flex items-center gap-1.5 bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-700/40 rounded-lg px-3 py-2">
             <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
@@ -331,10 +410,9 @@ export default function AppointmentForm({ mode = 'create', initialValues = null,
           >
             Cancel
           </button>
-
           <button
             type="submit"
-            disabled={submitDisabled}
+            disabled={submitting}
             className="inline-flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 shadow-sm shadow-indigo-200 dark:shadow-indigo-900/30 transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
           >
             {submitting ? (

@@ -1,7 +1,7 @@
 import EmptyState from '../common/EmptyState'
 import AppointmentCard from './AppointmentCard'
 
-export default function AppointmentBoard({ appointments, onEdit, onComplete, onCancel, onAddAppointment }) {
+export default function AppointmentBoard({ appointments, onEdit, onComplete, onCancel, onAddAppointment, isBusy }) {
   if (appointments.length === 0) {
     return (
       <EmptyState
@@ -21,6 +21,7 @@ export default function AppointmentBoard({ appointments, onEdit, onComplete, onC
             onEdit={onEdit}
             onComplete={onComplete}
             onCancel={onCancel}
+            isBusy={isBusy}
           />
         </div>
       ))}
