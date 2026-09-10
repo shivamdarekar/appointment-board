@@ -119,13 +119,22 @@ def update_appointment(
 ) -> Appointment:
     """Apply a partial update to an existing appointment.
 
+    Only scheduled appointments may be edited.
+    Completed and cancelled appointments are read-only historical records.
+
     Only fields explicitly provided (non-None) are applied.
     The conflict check always excludes the appointment being updated so it
     does not conflict with its own existing slot.
 
+    Raises InvalidStatusTransitionError if the appointment is not scheduled.
     Raises AppointmentConflictError if the new slot is taken by another appointment.
     """
     appointment = get_appointment(db, appointment_id)
+
+    if appointment.status == AppointmentStatus.COMPLETED:
+        raise InvalidStatusTransitionError("Completed appointments cannot be edited.")
+    if appointment.status == AppointmentStatus.CANCELLED:
+        raise InvalidStatusTransitionError("Cancelled appointments cannot be edited.")
 
     update_data = data.model_dump(exclude_none=True)
     for field, value in update_data.items():
@@ -159,11 +168,10 @@ def complete_appointment(db: Session, appointment_id: uuid.UUID) -> Appointment:
     """
     appointment = get_appointment(db, appointment_id)
 
-    if appointment.status != AppointmentStatus.SCHEDULED:
-        raise InvalidStatusTransitionError(
-            f"This appointment cannot be completed from its current status "
-            f"({appointment.status.value})."
-        )
+    if appointment.status == AppointmentStatus.COMPLETED:
+        raise InvalidStatusTransitionError("This appointment is already completed.")
+    if appointment.status == AppointmentStatus.CANCELLED:
+        raise InvalidStatusTransitionError("Cancelled appointments cannot be completed.")
 
     appointment.status = AppointmentStatus.COMPLETED
     db.commit()
@@ -181,11 +189,10 @@ def cancel_appointment(db: Session, appointment_id: uuid.UUID) -> Appointment:
     """
     appointment = get_appointment(db, appointment_id)
 
-    if appointment.status != AppointmentStatus.SCHEDULED:
-        raise InvalidStatusTransitionError(
-            f"This appointment cannot be cancelled from its current status "
-            f"({appointment.status.value})."
-        )
+    if appointment.status == AppointmentStatus.CANCELLED:
+        raise InvalidStatusTransitionError("This appointment is already cancelled.")
+    if appointment.status == AppointmentStatus.COMPLETED:
+        raise InvalidStatusTransitionError("Completed appointments cannot be cancelled.")
 
     appointment.status = AppointmentStatus.CANCELLED
     db.commit()

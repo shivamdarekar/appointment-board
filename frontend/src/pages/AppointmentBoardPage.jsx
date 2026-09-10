@@ -7,6 +7,7 @@ import ErrorMessage from '../components/common/ErrorMessage'
 import Modal from '../components/common/Modal'
 import useAppointments from '../hooks/useAppointments'
 import { STATUS } from '../constants/appointments'
+import { formatDate, formatTimeRange } from '../utils/formatters'
 
 // ─── Modal modes ──────────────────────────────────────────────────────────────
 const MODAL_CLOSED = null
@@ -31,39 +32,44 @@ export default function AppointmentBoardPage({ openCreateSignal = 0 }) {
     handleCancel,
   } = useAppointments()
 
-  // ── Modal / form state ────────────────────────────────────────────────────
+  // ── Form modal state ──────────────────────────────────────────────────────
   const [modalMode, setModalMode]               = useState(MODAL_CLOSED)
   const [editingAppointment, setEditingAppointment] = useState(null)
 
-  // ── Cancel confirmation dialog ────────────────────────────────────────────
-  const [confirmTarget, setConfirmTarget] = useState(null) // appointment to cancel
+  // ── Complete confirmation state ───────────────────────────────────────────
+  const [completeTarget, setCompleteTarget]   = useState(null)  // appointment
+  const [completing, setCompleting]           = useState(false) // in-flight
+
+  // ── Cancel confirmation state ─────────────────────────────────────────────
+  const [cancelTarget, setCancelTarget]       = useState(null)  // appointment
+  const [cancelling, setCancelling]           = useState(false) // in-flight
 
   // ── Feedback banners ──────────────────────────────────────────────────────
   const [successMessage, setSuccessMessage] = useState('')
   const [errorMessage, setErrorMessage]     = useState('')
 
-  // ── Open create modal when the header button fires the signal ─────────────
+  // ── Open create when header button fires ─────────────────────────────────
   useEffect(() => {
     if (openCreateSignal > 0) openCreate()
   }, [openCreateSignal]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Derived stats (computed from the current unfiltered list in the hook) ──
-  // Note: when filters are active, `appointments` is the filtered result.
-  // To keep stats accurate against the total, we compute them from the same
-  // list the hook exposes — the backend handles filtering, so this always
-  // reflects what the API returned for the current filter.
+  // ── Stats ─────────────────────────────────────────────────────────────────
   const stats = useMemo(() => ({
     scheduled: appointments.filter(a => a.status === STATUS.SCHEDULED).length,
     completed: appointments.filter(a => a.status === STATUS.COMPLETED).length,
     cancelled: appointments.filter(a => a.status === STATUS.CANCELLED).length,
   }), [appointments])
 
-  // ─── Modal helpers ─────────────────────────────────────────────────────────
+  const isFiltered = !!(dateFilter || statusFilter)
+
+  // ─── Helpers ──────────────────────────────────────────────────────────────
 
   function clearFeedback() {
     setSuccessMessage('')
     setErrorMessage('')
   }
+
+  // ─── Form modal ───────────────────────────────────────────────────────────
 
   function openCreate() {
     clearFeedback()
@@ -72,6 +78,8 @@ export default function AppointmentBoardPage({ openCreateSignal = 0 }) {
   }
 
   function openEdit(appointment) {
+    // Guard: only scheduled appointments are editable
+    if (appointment.status !== STATUS.SCHEDULED) return
     clearFeedback()
     setEditingAppointment(appointment)
     setModalMode(MODAL_EDIT)
@@ -82,8 +90,6 @@ export default function AppointmentBoardPage({ openCreateSignal = 0 }) {
     setEditingAppointment(null)
   }
 
-  // ─── Form submit handlers (async — delegate to hook) ──────────────────────
-
   async function onFormSubmit(formData) {
     if (modalMode === MODAL_CREATE) {
       const result = await handleCreate(formData)
@@ -91,10 +97,8 @@ export default function AppointmentBoardPage({ openCreateSignal = 0 }) {
         setSuccessMessage('Appointment created successfully.')
         closeModal()
       }
-      // On failure, return the error so AppointmentForm can display it inline
       return result
     }
-
     if (modalMode === MODAL_EDIT) {
       const result = await handleUpdate(editingAppointment.id, formData)
       if (result.ok) {
@@ -105,41 +109,67 @@ export default function AppointmentBoardPage({ openCreateSignal = 0 }) {
     }
   }
 
-  // ─── Complete handler ──────────────────────────────────────────────────────
+  // ─── Complete confirmation flow ───────────────────────────────────────────
 
-  async function onComplete(id) {
+  function requestComplete(appointment) {
     clearFeedback()
-    const result = await handleComplete(id)
-    if (result.ok) {
-      setSuccessMessage('Appointment marked as completed.')
-    } else {
-      setErrorMessage(result.error)
+    setCompleteTarget(appointment)
+  }
+
+  function dismissCompleteConfirm() {
+    if (completing) return // don't dismiss mid-request
+    setCompleteTarget(null)
+  }
+
+  async function confirmCompleteAppointment() {
+    if (completing) return
+    setCompleting(true)
+    const target = completeTarget
+    try {
+      const result = await handleComplete(target.id)
+      if (result.ok) {
+        setSuccessMessage('Appointment marked as completed.')
+        setCompleteTarget(null)
+      } else {
+        setErrorMessage(result.error)
+        setCompleteTarget(null)
+      }
+    } finally {
+      setCompleting(false)
     }
   }
 
-  // ─── Cancel confirmation flow ──────────────────────────────────────────────
+  // ─── Cancel confirmation flow ─────────────────────────────────────────────
 
   function requestCancel(appointment) {
     clearFeedback()
-    setConfirmTarget(appointment)
+    setCancelTarget(appointment)
   }
 
   function dismissCancelConfirm() {
-    setConfirmTarget(null)
+    if (cancelling) return
+    setCancelTarget(null)
   }
 
   async function confirmCancelAppointment() {
-    const target = confirmTarget
-    setConfirmTarget(null)
-    const result = await handleCancel(target.id)
-    if (result.ok) {
-      setSuccessMessage('Appointment cancelled successfully.')
-    } else {
-      setErrorMessage(result.error)
+    if (cancelling) return
+    setCancelling(true)
+    const target = cancelTarget
+    try {
+      const result = await handleCancel(target.id)
+      if (result.ok) {
+        setSuccessMessage('Appointment cancelled successfully.')
+        setCancelTarget(null)
+      } else {
+        setErrorMessage(result.error)
+        setCancelTarget(null)
+      }
+    } finally {
+      setCancelling(false)
     }
   }
 
-  // ─── Render ────────────────────────────────────────────────────────────────
+  // ─── Render ───────────────────────────────────────────────────────────────
 
   const isModalOpen = modalMode !== MODAL_CLOSED
 
@@ -164,9 +194,7 @@ export default function AppointmentBoardPage({ openCreateSignal = 0 }) {
                 onClick={() => setSuccessMessage('')}
                 aria-label="Dismiss success message"
                 className="text-emerald-400 hover:text-emerald-600 dark:hover:text-emerald-200 text-xl leading-none transition-colors"
-              >
-                ×
-              </button>
+              >×</button>
             </div>
           )}
           {errorMessage && (
@@ -199,39 +227,20 @@ export default function AppointmentBoardPage({ openCreateSignal = 0 }) {
         loading={loading}
       />
 
-      {/* ── Board: loading / error / list ── */}
+      {/* ── Board ── */}
       {loading ? (
         <LoadingSkeleton />
       ) : loadError ? (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 flex flex-col items-center gap-4">
-          <div className="w-20 h-20 rounded-2xl bg-rose-50 dark:bg-rose-900/20 flex items-center justify-center">
-            <svg className="w-10 h-10 text-rose-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
-            </svg>
-          </div>
-          <div className="text-center">
-            <p className="text-base font-semibold text-slate-800 dark:text-slate-200 mb-1">Unable to load appointments</p>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">{loadError}</p>
-            <button
-              type="button"
-              onClick={retry}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold transition-colors shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
-              </svg>
-              Retry
-            </button>
-          </div>
-        </div>
+        <LoadError message={loadError} onRetry={retry} />
       ) : (
         <AppointmentBoard
           appointments={appointments}
           onEdit={openEdit}
-          onComplete={onComplete}
+          onComplete={requestComplete}
           onCancel={requestCancel}
-          onAddAppointment={openCreate}
+          onAddAppointment={isFiltered ? handleClearFilters : openCreate}
           isBusy={isBusy}
+          isFiltered={isFiltered}
         />
       )}
 
@@ -249,19 +258,85 @@ export default function AppointmentBoardPage({ openCreateSignal = 0 }) {
         />
       </Modal>
 
-      {/* ── Cancel confirmation dialog ── */}
+      {/* ── Complete confirmation ── */}
       <ConfirmDialog
-        isOpen={!!confirmTarget}
+        isOpen={!!completeTarget}
+        title="Mark appointment as completed?"
+        message={completeTarget ? (
+          <div className="space-y-2">
+            <p className="font-medium text-slate-800 dark:text-slate-200">{completeTarget.title}</p>
+            <p className="text-slate-500 dark:text-slate-400">
+              {formatDate(completeTarget.appointment_date)}
+              {' · '}
+              {formatTimeRange(completeTarget.start_time, completeTarget.end_time)}
+            </p>
+            <p className="text-slate-500 dark:text-slate-400 mt-1">
+              This appointment will become read-only after completion.
+            </p>
+          </div>
+        ) : ''}
+        confirmLabel={completing ? 'Completing…' : 'Mark as Completed'}
+        cancelLabel="Cancel"
+        danger={false}
+        confirming={completing}
+        onConfirm={confirmCompleteAppointment}
+        onCancel={dismissCompleteConfirm}
+      />
+
+      {/* ── Cancel confirmation ── */}
+      <ConfirmDialog
+        isOpen={!!cancelTarget}
         title="Cancel this appointment?"
-        message="This appointment will remain in your history as cancelled. This action cannot be undone."
-        confirmLabel="Cancel Appointment"
+        message={cancelTarget ? (
+          <div className="space-y-2">
+            <p className="font-medium text-slate-800 dark:text-slate-200">{cancelTarget.title}</p>
+            <p className="text-slate-500 dark:text-slate-400">
+              {formatDate(cancelTarget.appointment_date)}
+              {' · '}
+              {formatTimeRange(cancelTarget.start_time, cancelTarget.end_time)}
+            </p>
+            <p className="text-slate-500 dark:text-slate-400 mt-1">
+              The appointment will remain visible as cancelled. This cannot be undone.
+            </p>
+          </div>
+        ) : ''}
+        confirmLabel={cancelling ? 'Cancelling…' : 'Cancel Appointment'}
         cancelLabel="Keep Appointment"
         danger
+        confirming={cancelling}
         onConfirm={confirmCancelAppointment}
         onCancel={dismissCancelConfirm}
       />
 
     </main>
+  )
+}
+
+// ─── Load error state ─────────────────────────────────────────────────────────
+
+function LoadError({ message, onRetry }) {
+  return (
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 flex flex-col items-center gap-4">
+      <div className="w-20 h-20 rounded-2xl bg-rose-50 dark:bg-rose-900/20 flex items-center justify-center">
+        <svg className="w-10 h-10 text-rose-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+        </svg>
+      </div>
+      <div className="text-center">
+        <p className="text-base font-semibold text-slate-800 dark:text-slate-200 mb-1">Unable to load appointments</p>
+        <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">{message}</p>
+        <button
+          type="button"
+          onClick={onRetry}
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold transition-colors shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+          </svg>
+          Retry
+        </button>
+      </div>
+    </div>
   )
 }
 

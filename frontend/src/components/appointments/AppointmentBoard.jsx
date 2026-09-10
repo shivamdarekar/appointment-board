@@ -1,12 +1,43 @@
 import EmptyState from '../common/EmptyState'
 import AppointmentCard from './AppointmentCard'
 
-export default function AppointmentBoard({ appointments, onEdit, onComplete, onCancel, onAddAppointment, isBusy }) {
+/**
+ * AppointmentBoard
+ *
+ * Props:
+ *   appointments     — array of appointment objects
+ *   onEdit           — (appointment) => void
+ *   onComplete       — (appointment) => void  — passes whole object for confirm dialog
+ *   onCancel         — (appointment) => void  — passes whole object for confirm dialog
+ *   onAddAppointment — () => void
+ *   isBusy           — (id) => boolean
+ *   isFiltered       — boolean  — true when date/status filters are active
+ */
+export default function AppointmentBoard({
+  appointments,
+  onEdit,
+  onComplete,
+  onCancel,
+  onAddAppointment,
+  isBusy,
+  isFiltered = false,
+}) {
   if (appointments.length === 0) {
+    if (isFiltered) {
+      return (
+        <EmptyState
+          variant="filtered"
+          title="No appointments match your filters"
+          message="Try changing the date or status filter, or clear all filters to see every appointment."
+          action={{ label: 'Clear Filters', onClick: onAddAppointment }}
+        />
+      )
+    }
     return (
       <EmptyState
-        title="No appointments found"
-        message="Try adjusting your filters, or add a new appointment to get started."
+        variant="empty"
+        title="No appointments yet"
+        message="Create your first appointment to get started."
         action={{ label: '+ Add Appointment', onClick: onAddAppointment }}
       />
     )

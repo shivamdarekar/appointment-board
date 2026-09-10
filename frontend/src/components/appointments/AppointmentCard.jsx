@@ -10,17 +10,24 @@ const ACCENT = {
 /**
  * AppointmentCard
  *
+ * Action visibility by status:
+ *   scheduled  → Edit | Complete | Cancel
+ *   completed  → read-only badge (no action buttons)
+ *   cancelled  → read-only badge (no action buttons)
+ *
  * Props:
- *   appointment — the appointment object
- *   onEdit(appointment)  — open edit form
- *   onComplete(appointment) — request completion (passed whole object for confirm dialog use)
- *   onCancel(appointment)   — request cancellation (parent owns confirmation dialog)
- *   isBusy(id) — returns true when an API action is in flight for this id
+ *   appointment  — appointment object
+ *   onEdit(appointment)    — open edit form (scheduled only)
+ *   onComplete(appointment) — request completion; parent owns confirm dialog
+ *   onCancel(appointment)   — request cancellation; parent owns confirm dialog
+ *   isBusy(id) — true while an API call is in flight for this id
  */
 export default function AppointmentCard({ appointment, onEdit, onComplete, onCancel, isBusy }) {
   const { id, title, description, appointment_date, start_time, end_time, status } = appointment
   const isScheduled = status === 'scheduled'
+  const isCompleted = status === 'completed'
   const isCancelled = status === 'cancelled'
+  const isReadOnly  = isCompleted || isCancelled
   const busy = isBusy ? isBusy(id) : false
 
   return (
@@ -33,7 +40,7 @@ export default function AppointmentCard({ appointment, onEdit, onComplete, onCan
         shadow-sm hover:shadow-md
         transition-all duration-200 hover:-translate-y-0.5
         flex flex-col
-        ${isCancelled ? 'opacity-70' : ''}
+        ${isReadOnly ? 'opacity-75' : ''}
         ${busy ? 'pointer-events-none' : ''}
       `}
       aria-label={`Appointment: ${title}`}
@@ -51,7 +58,9 @@ export default function AppointmentCard({ appointment, onEdit, onComplete, onCan
       {/* Card Header */}
       <div className="flex items-start justify-between gap-3 px-5 pt-5 pb-3">
         <div className="flex-1 min-w-0">
-          <h3 className={`text-base font-semibold leading-snug truncate ${isCancelled ? 'line-through text-slate-400 dark:text-slate-600' : 'text-slate-900 dark:text-white'}`}>
+          <h3 className={`text-base font-semibold leading-snug truncate
+            ${isCancelled ? 'line-through text-slate-400 dark:text-slate-600' : 'text-slate-900 dark:text-white'}
+          `}>
             {title}
           </h3>
           {description && (
@@ -86,32 +95,30 @@ export default function AppointmentCard({ appointment, onEdit, onComplete, onCan
       {/* Divider */}
       <div className="mx-5 border-t border-slate-100 dark:border-slate-800" />
 
-      {/* Actions */}
-      <div className="flex items-center gap-2 px-5 py-3 bg-slate-50/60 dark:bg-slate-800/40">
-
-        {/* Edit — only for scheduled appointments */}
-        {isScheduled && (
-          <button
-            type="button"
-            onClick={() => onEdit(appointment)}
-            disabled={busy}
-            aria-label={`Edit ${title}`}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-indigo-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" />
-            </svg>
-            Edit
-          </button>
-        )}
-
-        {isScheduled && (
+      {/* Actions footer */}
+      <div className="flex items-center gap-2 px-5 py-3 bg-slate-50/60 dark:bg-slate-800/40 mt-auto">
+        {isScheduled ? (
           <>
+            {/* Edit */}
             <button
               type="button"
-              onClick={() => onComplete(appointment.id)}
+              onClick={() => onEdit(appointment)}
               disabled={busy}
-              aria-label={`Complete ${title}`}
+              aria-label={`Edit ${title}`}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-indigo-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" />
+              </svg>
+              Edit
+            </button>
+
+            {/* Complete */}
+            <button
+              type="button"
+              onClick={() => onComplete(appointment)}
+              disabled={busy}
+              aria-label={`Mark ${title} as completed`}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-700/50 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -120,6 +127,7 @@ export default function AppointmentCard({ appointment, onEdit, onComplete, onCan
               Complete
             </button>
 
+            {/* Cancel */}
             <button
               type="button"
               onClick={() => onCancel(appointment)}
@@ -133,8 +141,15 @@ export default function AppointmentCard({ appointment, onEdit, onComplete, onCan
               Cancel
             </button>
           </>
+        ) : (
+          /* Read-only indicator for completed/cancelled */
+          <span className="inline-flex items-center gap-1.5 text-xs text-slate-400 dark:text-slate-500 font-medium select-none">
+            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+            </svg>
+            Read-only
+          </span>
         )}
-
       </div>
     </article>
   )
