@@ -65,8 +65,21 @@ def get_appointments(
     db: Session,
     filter_date: date | None = None,
     filter_status: AppointmentStatus | None = None,
-) -> list[Appointment]:
-    """Return all appointments, optionally filtered by date and/or status."""
+    page: int = 1,
+    page_size: int = 10,
+) -> dict:
+    """Return a paginated, optionally filtered list of appointments.
+
+    Filtering is applied at the database level before COUNT and LIMIT/OFFSET,
+    so pagination is always consistent with the active filters.
+
+    Returns a dict matching PaginatedAppointmentResponse:
+        items       — appointments for the requested page
+        page        — the requested page number
+        page_size   — the requested page size
+        total       — total matching records (across all pages)
+        total_pages — total number of pages
+    """
     query = db.query(Appointment)
 
     if filter_date is not None:
@@ -75,7 +88,27 @@ def get_appointments(
     if filter_status is not None:
         query = query.filter(Appointment.status == filter_status)
 
-    return query.order_by(Appointment.appointment_date, Appointment.start_time).all()
+    # Count BEFORE applying LIMIT/OFFSET so the total reflects the full
+    # filtered set, not just the current page.
+    total: int = query.count()
+    total_pages = max(1, -(-total // page_size)) if total > 0 else 0
+
+    # Stable ordering: date → start_time → created_at (tie-break)
+    items = (
+        query
+        .order_by(Appointment.appointment_date, Appointment.start_time, Appointment.created_at)
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+        .all()
+    )
+
+    return {
+        "items": items,
+        "page": page,
+        "page_size": page_size,
+        "total": total,
+        "total_pages": total_pages,
+    }
 
 
 def get_appointment(db: Session, appointment_id: uuid.UUID) -> Appointment:

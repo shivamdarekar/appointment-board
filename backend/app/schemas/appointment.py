@@ -77,3 +77,13 @@ class AppointmentResponse(BaseModel):
 
     # Allow Pydantic to read attributes from SQLAlchemy ORM objects directly.
     model_config = ConfigDict(from_attributes=True)
+
+
+class PaginatedAppointmentResponse(BaseModel):
+    """Paginated wrapper for the appointment list endpoint."""
+
+    items: list[AppointmentResponse]
+    page: int
+    page_size: int
+    total: int
+    total_pages: int

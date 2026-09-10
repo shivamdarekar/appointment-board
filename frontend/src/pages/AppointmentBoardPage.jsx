@@ -1,10 +1,11 @@
 import { useState, useEffect, useMemo } from 'react'
+import toast from 'react-hot-toast'
 import AppointmentBoard from '../components/appointments/AppointmentBoard'
 import AppointmentFilters from '../components/appointments/AppointmentFilters'
 import AppointmentForm from '../components/appointments/AppointmentForm'
 import ConfirmDialog from '../components/common/ConfirmDialog'
-import ErrorMessage from '../components/common/ErrorMessage'
 import Modal from '../components/common/Modal'
+import Pagination from '../components/common/Pagination'
 import useAppointments from '../hooks/useAppointments'
 import { STATUS } from '../constants/appointments'
 import { formatDate, formatTimeRange } from '../utils/formatters'
@@ -20,6 +21,13 @@ export default function AppointmentBoardPage({ openCreateSignal = 0 }) {
     loading,
     loadError,
     retry,
+    page,
+    pageSize,
+    total,
+    totalPages,
+    goToPrevPage,
+    goToNextPage,
+    goToPage,
     dateFilter,
     statusFilter,
     handleDateChange,
@@ -37,23 +45,19 @@ export default function AppointmentBoardPage({ openCreateSignal = 0 }) {
   const [editingAppointment, setEditingAppointment] = useState(null)
 
   // ── Complete confirmation state ───────────────────────────────────────────
-  const [completeTarget, setCompleteTarget]   = useState(null)  // appointment
-  const [completing, setCompleting]           = useState(false) // in-flight
+  const [completeTarget, setCompleteTarget] = useState(null)
+  const [completing, setCompleting]         = useState(false)
 
   // ── Cancel confirmation state ─────────────────────────────────────────────
-  const [cancelTarget, setCancelTarget]       = useState(null)  // appointment
-  const [cancelling, setCancelling]           = useState(false) // in-flight
-
-  // ── Feedback banners ──────────────────────────────────────────────────────
-  const [successMessage, setSuccessMessage] = useState('')
-  const [errorMessage, setErrorMessage]     = useState('')
+  const [cancelTarget, setCancelTarget] = useState(null)
+  const [cancelling, setCancelling]     = useState(false)
 
   // ── Open create when header button fires ─────────────────────────────────
   useEffect(() => {
     if (openCreateSignal > 0) openCreate()
   }, [openCreateSignal]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Stats ─────────────────────────────────────────────────────────────────
+  // ── Stats (current page only) ─────────────────────────────────────────────
   const stats = useMemo(() => ({
     scheduled: appointments.filter(a => a.status === STATUS.SCHEDULED).length,
     completed: appointments.filter(a => a.status === STATUS.COMPLETED).length,
@@ -62,25 +66,15 @@ export default function AppointmentBoardPage({ openCreateSignal = 0 }) {
 
   const isFiltered = !!(dateFilter || statusFilter)
 
-  // ─── Helpers ──────────────────────────────────────────────────────────────
-
-  function clearFeedback() {
-    setSuccessMessage('')
-    setErrorMessage('')
-  }
-
   // ─── Form modal ───────────────────────────────────────────────────────────
 
   function openCreate() {
-    clearFeedback()
     setEditingAppointment(null)
     setModalMode(MODAL_CREATE)
   }
 
   function openEdit(appointment) {
-    // Guard: only scheduled appointments are editable
     if (appointment.status !== STATUS.SCHEDULED) return
-    clearFeedback()
     setEditingAppointment(appointment)
     setModalMode(MODAL_EDIT)
   }
@@ -94,7 +88,7 @@ export default function AppointmentBoardPage({ openCreateSignal = 0 }) {
     if (modalMode === MODAL_CREATE) {
       const result = await handleCreate(formData)
       if (result.ok) {
-        setSuccessMessage('Appointment created successfully.')
+        toast.success('Appointment created successfully.')
         closeModal()
       }
       return result
@@ -102,7 +96,7 @@ export default function AppointmentBoardPage({ openCreateSignal = 0 }) {
     if (modalMode === MODAL_EDIT) {
       const result = await handleUpdate(editingAppointment.id, formData)
       if (result.ok) {
-        setSuccessMessage('Appointment updated successfully.')
+        toast.success('Appointment updated successfully.')
         closeModal()
       }
       return result
@@ -112,12 +106,11 @@ export default function AppointmentBoardPage({ openCreateSignal = 0 }) {
   // ─── Complete confirmation flow ───────────────────────────────────────────
 
   function requestComplete(appointment) {
-    clearFeedback()
     setCompleteTarget(appointment)
   }
 
   function dismissCompleteConfirm() {
-    if (completing) return // don't dismiss mid-request
+    if (completing) return
     setCompleteTarget(null)
   }
 
@@ -128,10 +121,10 @@ export default function AppointmentBoardPage({ openCreateSignal = 0 }) {
     try {
       const result = await handleComplete(target.id)
       if (result.ok) {
-        setSuccessMessage('Appointment marked as completed.')
+        toast.success('Appointment marked as completed.')
         setCompleteTarget(null)
       } else {
-        setErrorMessage(result.error)
+        toast.error(result.error)
         setCompleteTarget(null)
       }
     } finally {
@@ -142,7 +135,6 @@ export default function AppointmentBoardPage({ openCreateSignal = 0 }) {
   // ─── Cancel confirmation flow ─────────────────────────────────────────────
 
   function requestCancel(appointment) {
-    clearFeedback()
     setCancelTarget(appointment)
   }
 
@@ -158,10 +150,10 @@ export default function AppointmentBoardPage({ openCreateSignal = 0 }) {
     try {
       const result = await handleCancel(target.id)
       if (result.ok) {
-        setSuccessMessage('Appointment cancelled successfully.')
+        toast.success('Appointment cancelled successfully.')
         setCancelTarget(null)
       } else {
-        setErrorMessage(result.error)
+        toast.error(result.error)
         setCancelTarget(null)
       }
     } finally {
@@ -176,41 +168,38 @@ export default function AppointmentBoardPage({ openCreateSignal = 0 }) {
   return (
     <main className="flex-1 bg-slate-50 dark:bg-slate-950">
 
-      {/* ── Feedback banners ── */}
-      {(successMessage || errorMessage) && (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 space-y-2">
-          {successMessage && (
-            <div
-              role="status"
-              aria-live="polite"
-              className="flex items-center gap-3 p-4 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-700/50"
-            >
-              <svg className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <p className="flex-1 text-sm font-medium text-emerald-700 dark:text-emerald-300">{successMessage}</p>
-              <button
-                type="button"
-                onClick={() => setSuccessMessage('')}
-                aria-label="Dismiss success message"
-                className="text-emerald-400 hover:text-emerald-600 dark:hover:text-emerald-200 text-xl leading-none transition-colors"
-              >×</button>
-            </div>
-          )}
-          {errorMessage && (
-            <ErrorMessage message={errorMessage} onDismiss={() => setErrorMessage('')} />
-          )}
-        </div>
-      )}
+      {/* ── Page header with summary stats ── */}
+      <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
 
-      {/* ── Stats dashboard ── */}
-      <div className="bg-gradient-to-br from-indigo-500 to-purple-600 text-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <h2 className="text-lg font-bold mb-4 opacity-90">Overview</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <StatCard label="Scheduled" count={stats.scheduled} iconBg="bg-blue-500/30"    icon={<CalendarIcon />} />
-            <StatCard label="Completed" count={stats.completed} iconBg="bg-emerald-500/30" icon={<CheckCircleIcon />} />
-            <StatCard label="Cancelled" count={stats.cancelled} iconBg="bg-rose-500/30"    icon={<XCircleIcon />} />
+            {/* Title */}
+            <div>
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white">Appointments</h2>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+                {loading ? 'Loading…' : `${total} total appointment${total !== 1 ? 's' : ''}`}
+              </p>
+            </div>
+
+            {/* Stat pills */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <StatPill
+                label="Scheduled"
+                count={stats.scheduled}
+                color="bg-blue-50 text-blue-700 ring-1 ring-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:ring-blue-700/40"
+              />
+              <StatPill
+                label="Completed"
+                count={stats.completed}
+                color="bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-300 dark:ring-emerald-700/40"
+              />
+              <StatPill
+                label="Cancelled"
+                count={stats.cancelled}
+                color="bg-slate-100 text-slate-600 ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:ring-slate-700"
+              />
+            </div>
+
           </div>
         </div>
       </div>
@@ -222,26 +211,37 @@ export default function AppointmentBoardPage({ openCreateSignal = 0 }) {
         onDateChange={handleDateChange}
         onStatusChange={handleStatusChange}
         onClear={handleClearFilters}
-        totalCount={appointments.length}
-        filteredCount={appointments.length}
+        totalCount={total}
         loading={loading}
       />
 
-      {/* ── Board ── */}
+      {/* ── Board: loading / error / list ── */}
       {loading ? (
         <LoadingSkeleton />
       ) : loadError ? (
         <LoadError message={loadError} onRetry={retry} />
       ) : (
-        <AppointmentBoard
-          appointments={appointments}
-          onEdit={openEdit}
-          onComplete={requestComplete}
-          onCancel={requestCancel}
-          onAddAppointment={isFiltered ? handleClearFilters : openCreate}
-          isBusy={isBusy}
-          isFiltered={isFiltered}
-        />
+        <>
+          <AppointmentBoard
+            appointments={appointments}
+            onEdit={openEdit}
+            onComplete={requestComplete}
+            onCancel={requestCancel}
+            onAddAppointment={isFiltered ? handleClearFilters : openCreate}
+            isBusy={isBusy}
+            isFiltered={isFiltered}
+          />
+          <Pagination
+            page={page}
+            totalPages={totalPages}
+            total={total}
+            pageSize={pageSize}
+            onPrev={goToPrevPage}
+            onNext={goToNextPage}
+            onPage={goToPage}
+            loading={loading}
+          />
+        </>
       )}
 
       {/* ── Add / Edit modal ── */}
@@ -369,46 +369,13 @@ function LoadingSkeleton() {
   )
 }
 
-// ─── Stat card ────────────────────────────────────────────────────────────────
+// ─── Stat pill ───────────────────────────────────────────────────────────────
 
-function StatCard({ label, count, iconBg, icon }) {
+function StatPill({ label, count, color }) {
   return (
-    <div className="bg-white/10 backdrop-blur-sm rounded-xl p-5 border border-white/20 hover:bg-white/15 transition-colors">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm font-medium opacity-80 mb-1">{label}</p>
-          <p className="text-3xl font-bold">{count}</p>
-        </div>
-        <div className={`w-12 h-12 ${iconBg} rounded-xl flex items-center justify-center`}>
-          {icon}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// ─── Stat icons ───────────────────────────────────────────────────────────────
-
-function CalendarIcon() {
-  return (
-    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-    </svg>
-  )
-}
-
-function CheckCircleIcon() {
-  return (
-    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-    </svg>
-  )
-}
-
-function XCircleIcon() {
-  return (
-    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
-    </svg>
+    <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold ${color}`}>
+      <span className="text-base font-bold">{count}</span>
+      {label}
+    </span>
   )
 }

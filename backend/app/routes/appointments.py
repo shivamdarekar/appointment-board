@@ -10,20 +10,29 @@ from app.schemas.appointment import (
     AppointmentCreate,
     AppointmentResponse,
     AppointmentUpdate,
+    PaginatedAppointmentResponse,
 )
 from app.services import appointment_service
 
 router = APIRouter(prefix="/api/appointments", tags=["appointments"])
 
 
-@router.get("", response_model=list[AppointmentResponse], summary="List appointments")
+@router.get("", response_model=PaginatedAppointmentResponse, summary="List appointments")
 def list_appointments(
     date: date | None = Query(default=None, description="Filter by appointment date (YYYY-MM-DD)"),
     status: AppointmentStatus | None = Query(default=None, description="Filter by status"),
+    page: int = Query(default=1, ge=1, description="Page number (1-based)"),
+    page_size: int = Query(default=10, ge=1, le=100, description="Results per page (max 100)"),
     db: Session = Depends(get_db),
 ):
-    """Return all appointments, optionally filtered by date and/or status."""
-    return appointment_service.get_appointments(db, filter_date=date, filter_status=status)
+    """Return a paginated list of appointments, optionally filtered by date and/or status."""
+    return appointment_service.get_appointments(
+        db,
+        filter_date=date,
+        filter_status=status,
+        page=page,
+        page_size=page_size,
+    )
 
 
 @router.get("/{appointment_id}", response_model=AppointmentResponse, summary="Get appointment")

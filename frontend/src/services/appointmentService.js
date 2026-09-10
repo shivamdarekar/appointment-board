@@ -59,12 +59,15 @@ export function isConflictError(error) {
  * @param {{ date?: string, status?: string }} filters
  * @returns {Promise<Appointment[]>}
  */
-export async function getAppointments({ date = '', status = '' } = {}) {
+export async function getAppointments({ date = '', status = '', page = 1, pageSize = 10 } = {}) {
   const params = {}
-  if (date)   params.date   = date
-  if (status) params.status = status
+  if (date)     params.date      = date
+  if (status)   params.status    = status
+  params.page      = page
+  params.page_size = pageSize
 
   const { data } = await apiClient.get('', { params })
+  // data shape: { items, page, page_size, total, total_pages }
   return data
 }
 

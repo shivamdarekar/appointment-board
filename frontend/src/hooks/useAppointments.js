@@ -9,39 +9,45 @@ import {
   isConflictError,
 } from '../services/appointmentService'
 
+const DEFAULT_PAGE_SIZE = 10
+
 /**
  * useAppointments
  *
  * Central data hook for the Appointment Board.
  * Owns:
- *   - the appointment list
+ *   - the appointment list (current page)
  *   - filter state (date + status)
+ *   - pagination state (page, pageSize, total, totalPages)
  *   - loading / error state for the list
  *   - CRUD operations (create, update, complete, cancel)
  *   - per-action busy state to prevent duplicate submissions
- *
- * Returns everything AppointmentBoardPage needs to render and act.
  */
 export default function useAppointments() {
-  // ── Appointment list ──────────────────────────────────────────────────────
+  // ── Appointment list (current page) ──────────────────────────────────────
   const [appointments, setAppointments] = useState([])
   const [loading, setLoading]           = useState(true)
   const [loadError, setLoadError]       = useState('')
+
+  // ── Pagination ────────────────────────────────────────────────────────────
+  const [page, setPage]             = useState(1)
+  const [pageSize]                  = useState(DEFAULT_PAGE_SIZE)
+  const [total, setTotal]           = useState(0)
+  const [totalPages, setTotalPages] = useState(0)
 
   // ── Filters ───────────────────────────────────────────────────────────────
   const [dateFilter, setDateFilter]     = useState('')
   const [statusFilter, setStatusFilter] = useState('')
 
-  // ── Per-action busy tracking (maps id → true while a request is in flight) ─
+  // ── Per-action busy tracking (id → true while in-flight) ─────────────────
   const [busyIds, setBusyIds] = useState({})
 
-  // ── Abort controller ref — cancels stale filter requests ─────────────────
+  // ── Abort controller ref ──────────────────────────────────────────────────
   const abortRef = useRef(null)
 
   // ─── List fetching ────────────────────────────────────────────────────────
 
-  const fetchAppointments = useCallback(async (date, status) => {
-    // Cancel any in-flight request before starting a new one
+  const fetchAppointments = useCallback(async (date, status, targetPage) => {
     if (abortRef.current) abortRef.current.abort()
     const controller = new AbortController()
     abortRef.current = controller
@@ -50,10 +56,12 @@ export default function useAppointments() {
     setLoadError('')
 
     try {
-      const data = await getAppointments({ date, status })
-      // Only update state if this request wasn't superseded
+      const result = await getAppointments({ date, status, page: targetPage, pageSize })
       if (!controller.signal.aborted) {
-        setAppointments(data)
+        setAppointments(result.items)
+        setTotal(result.total)
+        setTotalPages(result.total_pages)
+        setPage(result.page)
       }
     } catch (err) {
       if (!controller.signal.aborted) {
@@ -64,91 +72,93 @@ export default function useAppointments() {
         setLoading(false)
       }
     }
-  }, [])
+  }, [pageSize])
 
-  // Fetch on mount and whenever filters change
+  // Fetch when filters or page changes
   useEffect(() => {
-    fetchAppointments(dateFilter, statusFilter)
-    // Cleanup: abort if the component unmounts mid-request
+    fetchAppointments(dateFilter, statusFilter, page)
     return () => { if (abortRef.current) abortRef.current.abort() }
-  }, [dateFilter, statusFilter, fetchAppointments])
+  }, [dateFilter, statusFilter, page, fetchAppointments])
 
-  // Manual retry (for the error state Retry button)
+  // Manual retry
   const retry = useCallback(() => {
-    fetchAppointments(dateFilter, statusFilter)
-  }, [dateFilter, statusFilter, fetchAppointments])
+    fetchAppointments(dateFilter, statusFilter, page)
+  }, [dateFilter, statusFilter, page, fetchAppointments])
 
-  // ─── Filter helpers ───────────────────────────────────────────────────────
+  // ─── Filter helpers — reset to page 1 on any filter change ───────────────
 
   function handleDateChange(value) {
     setDateFilter(value)
+    setPage(1)
   }
 
   function handleStatusChange(value) {
     setStatusFilter(value)
+    setPage(1)
   }
 
   function handleClearFilters() {
     setDateFilter('')
     setStatusFilter('')
+    setPage(1)
   }
 
-  // ─── Helpers ──────────────────────────────────────────────────────────────
+  // ─── Pagination helpers ───────────────────────────────────────────────────
 
-  function markBusy(id)   { setBusyIds(prev => ({ ...prev, [id]: true })) }
-  function markIdle(id)   { setBusyIds(prev => { const n = { ...prev }; delete n[id]; return n }) }
-  function isBusy(id)     { return !!busyIds[id] }
+  function goToPage(targetPage) {
+    if (targetPage < 1 || targetPage > totalPages) return
+    setPage(targetPage)
+  }
 
-  /** Replace a single appointment in state with an updated version from the API. */
-  function replaceAppointment(updated) {
-    setAppointments(prev => prev.map(a => a.id === updated.id ? updated : a))
+  function goToPrevPage() { goToPage(page - 1) }
+  function goToNextPage() { goToPage(page + 1) }
+
+  // ─── Internal helpers ─────────────────────────────────────────────────────
+
+  function markBusy(id) { setBusyIds(prev => ({ ...prev, [id]: true })) }
+  function markIdle(id) { setBusyIds(prev => { const n = { ...prev }; delete n[id]; return n }) }
+  function isBusy(id)   { return !!busyIds[id] }
+
+  // After a mutation that changes the total (create/complete/cancel with active
+  // status filter), refetch the current page so pagination stays consistent.
+  function refetch() {
+    fetchAppointments(dateFilter, statusFilter, page)
   }
 
   // ─── CRUD operations ──────────────────────────────────────────────────────
 
-  /**
-   * Create a new appointment.
-   * @param {object} formData — validated form fields from AppointmentForm
-   * @returns {{ ok: true, appointment: object } | { ok: false, error: string, isConflict: boolean }}
-   */
   async function handleCreate(formData) {
     try {
       const created = await createAppointment(formData)
-      // Prepend the new appointment so it appears at the top
-      setAppointments(prev => [created, ...prev])
+      // Go to page 1 to show the new appointment (ordered by date/time)
+      if (page === 1) {
+        refetch()
+      } else {
+        setPage(1) // triggers useEffect → fetch page 1
+      }
       return { ok: true, appointment: created }
     } catch (err) {
       return { ok: false, error: getErrorMessage(err), isConflict: isConflictError(err) }
     }
   }
 
-  /**
-   * Update an existing appointment.
-   * @param {string} id — UUID of the appointment to update
-   * @param {object} formData — validated form fields from AppointmentForm
-   * @returns {{ ok: true, appointment: object } | { ok: false, error: string, isConflict: boolean }}
-   */
   async function handleUpdate(id, formData) {
     try {
       const updated = await updateAppointment(id, formData)
-      replaceAppointment(updated)
+      // Refetch to reflect updated data in current sort order
+      refetch()
       return { ok: true, appointment: updated }
     } catch (err) {
       return { ok: false, error: getErrorMessage(err), isConflict: isConflictError(err) }
     }
   }
 
-  /**
-   * Mark an appointment as completed.
-   * @param {string} id
-   * @returns {{ ok: true } | { ok: false, error: string }}
-   */
   async function handleComplete(id) {
     if (isBusy(id)) return { ok: false, error: 'Already in progress.' }
     markBusy(id)
     try {
-      const updated = await completeAppointment(id)
-      replaceAppointment(updated)
+      await completeAppointment(id)
+      refetch()
       return { ok: true }
     } catch (err) {
       return { ok: false, error: getErrorMessage(err) }
@@ -157,17 +167,12 @@ export default function useAppointments() {
     }
   }
 
-  /**
-   * Cancel an appointment. Record remains visible with Cancelled status.
-   * @param {string} id
-   * @returns {{ ok: true } | { ok: false, error: string }}
-   */
   async function handleCancel(id) {
     if (isBusy(id)) return { ok: false, error: 'Already in progress.' }
     markBusy(id)
     try {
-      const updated = await cancelAppointment(id)
-      replaceAppointment(updated)
+      await cancelAppointment(id)
+      refetch()
       return { ok: true }
     } catch (err) {
       return { ok: false, error: getErrorMessage(err) }
@@ -184,6 +189,15 @@ export default function useAppointments() {
     loading,
     loadError,
     retry,
+
+    // Pagination state + helpers
+    page,
+    pageSize,
+    total,
+    totalPages,
+    goToPrevPage,
+    goToNextPage,
+    goToPage,
 
     // Filter state + handlers
     dateFilter,
