@@ -391,6 +391,24 @@ class TestStateTransitions:
         resp = client.get(f"/api/appointments/{created['id']}")
         assert resp.json()["status"] == "cancelled"
 
+    def test_edit_completed_appointment_returns_409(self, client):
+        created = create(client)
+        client.patch(f"/api/appointments/{created['id']}/complete")
+        resp = client.put(
+            f"/api/appointments/{created['id']}",
+            json={"title": "Attempting edit"},
+        )
+        assert resp.status_code == 409
+
+    def test_edit_cancelled_appointment_returns_409(self, client):
+        created = create(client)
+        client.patch(f"/api/appointments/{created['id']}/cancel")
+        resp = client.put(
+            f"/api/appointments/{created['id']}",
+            json={"title": "Attempting edit"},
+        )
+        assert resp.status_code == 409
+
 
 # ---------------------------------------------------------------------------
 # Filtering
@@ -403,7 +421,7 @@ class TestFiltering:
 
         resp = client.get("/api/appointments?date=2026-10-01")
         assert resp.status_code == 200
-        results = resp.json()
+        results = resp.json()["items"]
         assert len(results) == 1
         assert results[0]["appointment_date"] == "2026-10-01"
 
@@ -411,7 +429,7 @@ class TestFiltering:
         create(client, appointment_date="2026-10-01", start_time="09:00:00", end_time="10:00:00")
         resp = client.get("/api/appointments?date=2026-12-31")
         assert resp.status_code == 200
-        assert resp.json() == []
+        assert resp.json()["items"] == []
 
     def test_filter_by_status_scheduled(self, client):
         a = create(client, appointment_date="2026-10-01", start_time="09:00:00", end_time="10:00:00")
@@ -420,7 +438,7 @@ class TestFiltering:
 
         resp = client.get("/api/appointments?status=scheduled")
         assert resp.status_code == 200
-        ids = [r["id"] for r in resp.json()]
+        ids = [r["id"] for r in resp.json()["items"]]
         assert a["id"] in ids
         assert b["id"] not in ids
 
@@ -431,7 +449,7 @@ class TestFiltering:
 
         resp = client.get("/api/appointments?status=cancelled")
         assert resp.status_code == 200
-        ids = [r["id"] for r in resp.json()]
+        ids = [r["id"] for r in resp.json()["items"]]
         assert b["id"] in ids
         assert a["id"] not in ids
 
@@ -446,7 +464,7 @@ class TestFiltering:
 
         resp = client.get("/api/appointments?date=2026-10-01&status=scheduled")
         assert resp.status_code == 200
-        results = resp.json()
+        results = resp.json()["items"]
         ids = [r["id"] for r in results]
         assert a["id"] in ids
         assert b["id"] not in ids
@@ -461,7 +479,7 @@ class TestFiltering:
         create(client, appointment_date="2026-10-02", start_time="09:00:00", end_time="10:00:00")
         resp = client.get("/api/appointments")
         assert resp.status_code == 200
-        assert len(resp.json()) == 2
+        assert resp.json()["total"] == 2
 
     def test_results_ordered_by_date_then_time(self, client):
         create(client, appointment_date="2026-10-02", start_time="09:00:00", end_time="10:00:00", title="B")
@@ -469,5 +487,5 @@ class TestFiltering:
         create(client, appointment_date="2026-10-01", start_time="09:00:00", end_time="10:00:00", title="A")
 
         resp = client.get("/api/appointments")
-        titles = [r["title"] for r in resp.json()]
+        titles = [r["title"] for r in resp.json()["items"]]
         assert titles == ["A", "C", "B"]

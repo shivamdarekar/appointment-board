@@ -30,15 +30,15 @@ export default function Modal({ isOpen, onClose, title, children }) {
       />
 
       {/* Panel */}
-      <div className="relative w-full sm:max-w-lg bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-2xl shadow-2xl flex flex-col max-h-[90vh]">
+      <div className="relative flex max-h-[90vh] w-full flex-col rounded-t-3xl bg-white shadow-2xl dark:bg-slate-900 sm:max-w-lg sm:rounded-2xl">
         {/* Drag handle (mobile) */}
         <div className="flex justify-center pt-3 pb-1 sm:hidden">
           <div className="w-10 h-1 rounded-full bg-slate-300 dark:bg-slate-700" />
         </div>
 
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-800">
-          <h2 id="modal-title" className="text-lg font-bold text-slate-900 dark:text-white">
+        <div className="flex items-center justify-between border-b border-slate-200 px-6 py-5 dark:border-slate-800">
+          <h2 id="modal-title" className="text-lg font-bold tracking-tight text-slate-950 dark:text-white">
             {title}
           </h2>
           <button

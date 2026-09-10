@@ -1,11 +1,15 @@
 @import "tailwindcss";
 
+/* The app controls this class explicitly through its theme toggle, so system
+   colour-scheme preferences cannot create light-text-on-light-surface UI. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
-  --color-brand-50:  #eef2ff;
-  --color-brand-100: #e0e7ff;
-  --color-brand-500: #6366f1;
-  --color-brand-600: #4f46e5;
-  --color-brand-700: #4338ca;
+  --color-brand-50:  #f1f5f9;
+  --color-brand-100: #e2e8f0;
+  --color-brand-500: #0f172a;
+  --color-brand-600: #0f172a;
+  --color-brand-700: #020617;
 
   --color-surface: #ffffff;
   --color-surface-2: #f8fafc;
@@ -34,7 +38,7 @@
 
 /* Header bar (month + year + nav arrows) */
 .appt-datepicker-calendar .react-datepicker__header {
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  background: #0f172a;
   border-bottom: none;
   padding: 12px 8px 8px;
 }
@@ -87,20 +91,20 @@
 }
 
 .appt-datepicker-calendar .react-datepicker__day:hover {
-  background-color: #eef2ff;
-  color: #4f46e5;
+  background-color: #f1f5f9;
+  color: #0f172a;
 }
 
 .appt-datepicker-calendar .react-datepicker__day--selected,
 .appt-datepicker-calendar .react-datepicker__day--keyboard-selected {
-  background-color: #6366f1 !important;
+  background-color: #0f172a !important;
   color: #fff !important;
   font-weight: 700;
 }
 
 .appt-datepicker-calendar .react-datepicker__day--today {
   font-weight: 700;
-  color: #6366f1;
+  color: #0f766e;
 }
 
 .appt-datepicker-calendar .react-datepicker__day--today.react-datepicker__day--selected {
@@ -120,7 +124,7 @@
 .appt-datepicker-calendar .react-datepicker__today-button {
   background: #f8fafc;
   border-top: 1px solid #e2e8f0;
-  color: #6366f1;
+  color: #0f766e;
   font-size: 0.75rem;
   font-weight: 600;
   padding: 6px;
@@ -129,7 +133,7 @@
 }
 
 .appt-datepicker-calendar .react-datepicker__today-button:hover {
-  background: #eef2ff;
+  background: #f1f5f9;
 }
 
 /* Time-only picker (list of times) */
@@ -142,7 +146,7 @@
 }
 
 .appt-datepicker-popper .react-datepicker--time-only .react-datepicker__header--time {
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  background: #0f172a;
   border-bottom: none;
   padding: 10px 8px;
 }
@@ -159,7 +163,7 @@
 
 .appt-datepicker-popper .react-datepicker__time-list {
   scrollbar-width: thin;
-  scrollbar-color: #c7d2fe transparent;
+  scrollbar-color: #cbd5e1 transparent;
 }
 
 .appt-datepicker-popper .react-datepicker__time-list-item {
@@ -171,12 +175,12 @@
 }
 
 .appt-datepicker-popper .react-datepicker__time-list-item:hover {
-  background-color: #eef2ff !important;
-  color: #4f46e5 !important;
+  background-color: #f1f5f9 !important;
+  color: #0f172a !important;
 }
 
 .appt-datepicker-popper .react-datepicker__time-list-item--selected {
-  background-color: #6366f1 !important;
+  background-color: #0f172a !important;
   color: #fff !important;
   font-weight: 700;
 }
@@ -186,3 +190,41 @@
   cursor: not-allowed;
 }
 
+/* DatePicker renders its menu outside React's component tree, so its dark
+   palette is defined here instead of relying on utility classes. */
+.dark .appt-datepicker-calendar.react-datepicker,
+.dark .appt-datepicker-popper .react-datepicker--time-only {
+  background: #0f172a;
+  border-color: #334155;
+  box-shadow: 0 16px 36px -12px rgba(0, 0, 0, 0.55);
+}
+
+.dark .appt-datepicker-calendar .react-datepicker__day,
+.dark .appt-datepicker-popper .react-datepicker__time-list-item {
+  color: #e2e8f0;
+}
+
+.dark .appt-datepicker-calendar .react-datepicker__day:hover,
+.dark .appt-datepicker-popper .react-datepicker__time-list-item:hover {
+  background-color: #1e293b !important;
+  color: #f8fafc !important;
+}
+
+.dark .appt-datepicker-calendar .react-datepicker__day--outside-month,
+.dark .appt-datepicker-popper .react-datepicker__time-list-item--disabled {
+  color: #64748b !important;
+}
+
+.dark .appt-datepicker-calendar .react-datepicker__day--today,
+.dark .appt-datepicker-calendar .react-datepicker__today-button {
+  color: #5eead4;
+}
+
+.dark .appt-datepicker-calendar .react-datepicker__today-button {
+  background: #0f172a;
+  border-top-color: #334155;
+}
+
+.dark .appt-datepicker-calendar .react-datepicker__today-button:hover {
+  background: #1e293b;
+}

@@ -58,7 +58,7 @@ function validate(fields) {
 function FieldError({ message }) {
   if (!message) return null
   return (
-    <p role="alert" className="mt-1.5 text-xs text-rose-600 dark:text-rose-400 flex items-center gap-1">
+    <p role="alert" className="mt-1.5 flex items-center gap-1 text-xs font-medium text-rose-700 dark:text-rose-300">
       <svg className="w-3 h-3 shrink-0" fill="currentColor" viewBox="0 0 20 20">
         <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
       </svg>
@@ -69,7 +69,7 @@ function FieldError({ message }) {
 
 function FieldLabel({ htmlFor, children, required }) {
   return (
-    <label htmlFor={htmlFor} className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+    <label htmlFor={htmlFor} className="block text-sm font-semibold text-slate-800 dark:text-slate-300 mb-1.5">
       {children}
       {required && <span className="ml-0.5 text-rose-500" aria-hidden="true"> *</span>}
     </label>
@@ -79,7 +79,7 @@ function FieldLabel({ htmlFor, children, required }) {
 const INPUT_BASE =
   'w-full rounded-lg border bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white ' +
   'px-3 py-2.5 transition-shadow duration-150 ' +
-  'focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 ' +
+  'focus:outline-none focus:ring-2 focus:ring-slate-900/15 focus:border-slate-900 ' +
   'disabled:opacity-50 disabled:cursor-not-allowed'
 
 const INPUT_NORMAL = `${INPUT_BASE} border-slate-300 dark:border-slate-600`
@@ -104,7 +104,7 @@ const DateInput = forwardRef(function DateInput({ value, onClick, placeholder, d
         disabled={disabled}
         className={`${inputClass(hasError)} cursor-pointer pr-10`}
       />
-      <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-slate-400">
+      <span className={`pointer-events-none absolute inset-y-0 right-3 flex items-center ${hasError ? 'text-rose-600 dark:text-rose-300' : 'text-slate-600 dark:text-slate-300'}`}>
         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
         </svg>
@@ -126,7 +126,7 @@ const TimeInput = forwardRef(function TimeInput({ value, onClick, placeholder, d
         disabled={disabled}
         className={`${inputClass(hasError)} cursor-pointer pr-10`}
       />
-      <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-slate-400">
+      <span className={`pointer-events-none absolute inset-y-0 right-3 flex items-center ${hasError ? 'text-rose-600 dark:text-rose-300' : 'text-slate-600 dark:text-slate-300'}`}>
         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6l4 2m6-2a10 10 0 11-20 0 10 10 0 0120 0z" />
         </svg>
@@ -261,7 +261,7 @@ export default function AppointmentForm({ mode = 'create', initialValues = null,
 
         {/* API error banner */}
         {apiError && (
-          <div role="alert" className="flex items-start gap-2.5 p-3.5 rounded-lg bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-700/50 text-rose-700 dark:text-rose-300">
+          <div role="alert" className="flex items-start gap-2.5 rounded-lg border border-rose-300 bg-rose-50 p-3.5 text-rose-900 shadow-sm dark:border-rose-900 dark:bg-rose-950/60 dark:text-rose-100">
             <svg className="w-4 h-4 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
             </svg>
@@ -392,7 +392,7 @@ export default function AppointmentForm({ mode = 'create', initialValues = null,
 
         {/* Field summary hint */}
         {hasFieldErrors && Object.keys(touched).length > 0 && (
-          <p className="text-xs text-rose-600 dark:text-rose-400 flex items-center gap-1.5 bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-700/40 rounded-lg px-3 py-2">
+          <p className="flex items-center gap-1.5 rounded-lg border border-rose-300 bg-rose-50 px-3 py-2 text-xs font-medium text-rose-800 dark:border-rose-900 dark:bg-rose-950/60 dark:text-rose-200">
             <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
             </svg>
@@ -413,7 +413,7 @@ export default function AppointmentForm({ mode = 'create', initialValues = null,
           <button
             type="submit"
             disabled={submitting}
-            className="inline-flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 shadow-sm shadow-indigo-200 dark:shadow-indigo-900/30 transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
+            className="inline-flex items-center gap-2 rounded-lg bg-slate-950 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950 focus-visible:ring-offset-2 dark:bg-sky-400 dark:text-slate-950 dark:hover:bg-sky-300 dark:focus-visible:ring-sky-300 dark:focus-visible:ring-offset-slate-900"
           >
             {submitting ? (
               <>

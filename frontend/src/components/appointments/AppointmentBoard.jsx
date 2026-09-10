@@ -1,18 +1,6 @@
 import EmptyState from '../common/EmptyState'
 import AppointmentCard from './AppointmentCard'
 
-/**
- * AppointmentBoard
- *
- * Props:
- *   appointments     — array of appointment objects
- *   onEdit           — (appointment) => void
- *   onComplete       — (appointment) => void  — passes whole object for confirm dialog
- *   onCancel         — (appointment) => void  — passes whole object for confirm dialog
- *   onAddAppointment — () => void
- *   isBusy           — (id) => boolean
- *   isFiltered       — boolean  — true when date/status filters are active
- */
 export default function AppointmentBoard({
   appointments,
   onEdit,
@@ -23,39 +11,42 @@ export default function AppointmentBoard({
   isFiltered = false,
 }) {
   if (appointments.length === 0) {
-    if (isFiltered) {
-      return (
-        <EmptyState
-          variant="filtered"
-          title="No appointments match your filters"
-          message="Try changing the date or status filter, or clear all filters to see every appointment."
-          action={{ label: 'Clear Filters', onClick: onAddAppointment }}
-        />
-      )
-    }
     return (
-      <EmptyState
-        variant="empty"
-        title="No appointments yet"
-        message="Create your first appointment to get started."
-        action={{ label: '+ Add Appointment', onClick: onAddAppointment }}
-      />
+      <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <EmptyState
+            variant={isFiltered ? 'filtered' : 'empty'}
+            title={isFiltered ? 'No appointments match these filters' : 'Your schedule is clear'}
+            message={isFiltered ? 'Try another date or status, or clear the filters to see every appointment.' : 'Create your first appointment to start building the team schedule.'}
+            action={{ label: isFiltered ? 'Clear filters' : 'New appointment', onClick: onAddAppointment }}
+          />
+        </div>
+      </div>
     )
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 p-4 sm:p-6" role="list">
-      {appointments.map((appt) => (
-        <div key={appt.id} role="listitem">
-          <AppointmentCard
-            appointment={appt}
-            onEdit={onEdit}
-            onComplete={onComplete}
-            onCancel={onCancel}
-            isBusy={isBusy}
-          />
+    <section className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8" aria-label="Appointment list">
+      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div className="hidden grid-cols-[12rem_minmax(0,1fr)_8rem_17rem] gap-5 border-b border-slate-200 bg-slate-50 px-6 py-3 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400 lg:grid">
+          <span>When</span>
+          <span>Appointment</span>
+          <span>Status</span>
+          <span className="text-right">Actions</span>
         </div>
-      ))}
-    </div>
+        <div role="list" className="divide-y divide-slate-100 dark:divide-slate-800">
+          {appointments.map((appointment) => (
+            <AppointmentCard
+              key={appointment.id}
+              appointment={appointment}
+              onEdit={onEdit}
+              onComplete={onComplete}
+              onCancel={onCancel}
+              isBusy={isBusy}
+            />
+          ))}
+        </div>
+      </div>
+    </section>
   )
 }

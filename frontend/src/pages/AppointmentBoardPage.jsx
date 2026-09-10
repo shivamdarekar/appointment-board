@@ -166,37 +166,38 @@ export default function AppointmentBoardPage({ openCreateSignal = 0 }) {
   const isModalOpen = modalMode !== MODAL_CLOSED
 
   return (
-    <main className="flex-1 bg-slate-50 dark:bg-slate-950">
+    <main className="flex-1 bg-[#f7f8fa] transition-colors dark:bg-slate-950">
 
       {/* ── Page header with summary stats ── */}
-      <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div className="border-b border-slate-200 bg-[#f7f8fa] dark:border-slate-800 dark:bg-slate-950">
+        <div className="mx-auto max-w-7xl px-4 py-7 sm:px-6 lg:px-8">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
 
             {/* Title */}
             <div>
-              <h2 className="text-xl font-bold text-slate-900 dark:text-white">Appointments</h2>
-              <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-                {loading ? 'Loading…' : `${total} total appointment${total !== 1 ? 's' : ''}`}
+              <p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">Schedule overview</p>
+              <h2 className="mt-1 text-2xl font-bold tracking-tight text-slate-950 dark:text-white">Appointments</h2>
+              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                {loading ? 'Loading your schedule…' : `${total} appointment${total !== 1 ? 's' : ''} in the current view`}
               </p>
             </div>
 
             {/* Stat pills */}
-            <div className="flex items-center gap-2 flex-wrap">
+            <div className="grid grid-cols-3 gap-2 sm:gap-3">
               <StatPill
                 label="Scheduled"
                 count={stats.scheduled}
-                color="bg-blue-50 text-blue-700 ring-1 ring-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:ring-blue-700/40"
+                color="border-sky-200 bg-sky-50 text-sky-800 dark:border-sky-900 dark:bg-sky-950/60 dark:text-sky-200"
               />
               <StatPill
                 label="Completed"
                 count={stats.completed}
-                color="bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-300 dark:ring-emerald-700/40"
+                color="border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/60 dark:text-emerald-200"
               />
               <StatPill
                 label="Cancelled"
                 count={stats.cancelled}
-                color="bg-slate-100 text-slate-600 ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:ring-slate-700"
+                color="border-slate-200 bg-white text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
               />
             </div>
 
@@ -317,18 +318,18 @@ export default function AppointmentBoardPage({ openCreateSignal = 0 }) {
 function LoadError({ message, onRetry }) {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 flex flex-col items-center gap-4">
-      <div className="w-20 h-20 rounded-2xl bg-rose-50 dark:bg-rose-900/20 flex items-center justify-center">
-        <svg className="w-10 h-10 text-rose-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <div className="flex h-20 w-20 items-center justify-center rounded-2xl border border-rose-200 bg-rose-50 dark:border-rose-900 dark:bg-rose-950/50">
+        <svg className="h-10 w-10 text-rose-600 dark:text-rose-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
         </svg>
       </div>
       <div className="text-center">
-        <p className="text-base font-semibold text-slate-800 dark:text-slate-200 mb-1">Unable to load appointments</p>
-        <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">{message}</p>
+        <p className="mb-1 text-base font-semibold text-slate-900 dark:text-white">Unable to load appointments</p>
+        <p className="mb-4 text-sm text-slate-600 dark:text-slate-300">{message}</p>
         <button
           type="button"
           onClick={onRetry}
-          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold transition-colors shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+          className="inline-flex items-center gap-2 rounded-lg bg-slate-950 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950 dark:bg-sky-400 dark:text-slate-950 dark:hover:bg-sky-300 dark:focus-visible:ring-sky-300"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
@@ -344,27 +345,21 @@ function LoadError({ message, onRetry }) {
 
 function LoadingSkeleton() {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 p-4 sm:p-6" aria-busy="true" aria-label="Loading appointments">
-      {Array.from({ length: 6 }).map((_, i) => (
-        <div key={i} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 border-l-4 border-l-slate-200 dark:border-l-slate-700 rounded-xl p-5 space-y-3 animate-pulse">
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex-1 space-y-2">
-              <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-3/4" />
-              <div className="h-3 bg-slate-100 dark:bg-slate-800 rounded w-1/2" />
+    <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8" aria-busy="true" aria-label="Loading appointments">
+      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div className="hidden h-11 border-b border-slate-100 bg-slate-50 dark:border-slate-800 dark:bg-slate-900 lg:block" />
+        {Array.from({ length: 5 }).map((_, index) => (
+          <div key={index} className="grid gap-4 border-b border-slate-100 px-5 py-5 last:border-b-0 dark:border-slate-800 lg:grid-cols-[12rem_minmax(0,1fr)_8rem_17rem] lg:items-center lg:gap-5 lg:px-6">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-lg bg-slate-100 dark:bg-slate-800" />
+              <div className="space-y-2"><div className="h-3 w-24 rounded bg-slate-100 dark:bg-slate-800" /><div className="h-2.5 w-32 rounded bg-slate-50 dark:bg-slate-700" /></div>
             </div>
-            <div className="h-6 w-20 bg-slate-100 dark:bg-slate-800 rounded-full" />
+            <div className="space-y-2"><div className="h-3.5 w-2/3 rounded bg-slate-100 dark:bg-slate-800" /><div className="h-2.5 w-1/2 rounded bg-slate-50 dark:bg-slate-700" /></div>
+            <div className="h-7 w-20 rounded-full bg-slate-100 dark:bg-slate-800" />
+            <div className="flex gap-2 lg:justify-end"><div className="h-8 w-14 rounded-lg bg-slate-50 dark:bg-slate-700" /><div className="h-8 w-20 rounded-lg bg-slate-100 dark:bg-slate-800" /><div className="h-8 w-14 rounded-lg bg-slate-50 dark:bg-slate-700" /></div>
           </div>
-          <div className="flex gap-3">
-            <div className="h-3 bg-slate-100 dark:bg-slate-800 rounded w-24" />
-            <div className="h-3 bg-slate-100 dark:bg-slate-800 rounded w-28" />
-          </div>
-          <div className="border-t border-slate-100 dark:border-slate-800 pt-3 flex gap-2">
-            <div className="h-7 bg-slate-100 dark:bg-slate-800 rounded-lg w-14" />
-            <div className="h-7 bg-slate-100 dark:bg-slate-800 rounded-lg w-20" />
-            <div className="h-7 bg-slate-100 dark:bg-slate-800 rounded-lg w-16" />
-          </div>
-        </div>
-      ))}
+        ))}
+      </div>
     </div>
   )
 }
@@ -373,9 +368,9 @@ function LoadingSkeleton() {
 
 function StatPill({ label, count, color }) {
   return (
-    <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold ${color}`}>
-      <span className="text-base font-bold">{count}</span>
-      {label}
-    </span>
+    <div className={`min-w-[5.5rem] rounded-xl border px-3 py-2 ${color}`}>
+      <span className="block text-lg font-bold leading-none">{count}</span>
+      <span className="mt-1 block text-[10px] font-bold uppercase tracking-[0.08em]">{label}</span>
+    </div>
   )
 }
